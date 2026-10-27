@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="0" fill="#0d0f13"/>
+  <path d="M120 330 C 90 250, 120 150, 210 140 C 290 132, 300 200, 360 190 C 420 180, 430 260, 400 320 C 370 380, 300 360, 250 380 C 190 404, 140 390, 120 330 Z" fill="none" stroke="#3a4150" stroke-width="34" stroke-linejoin="round"/>
+  <path d="M120 330 C 90 250, 120 150, 210 140 C 290 132, 300 200, 360 190 C 420 180, 430 260, 400 320 C 370 380, 300 360, 250 380 C 190 404, 140 390, 120 330 Z" fill="none" stroke="#8a93a3" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="360" cy="190" r="22" fill="#e10600" stroke="#0d0f13" stroke-width="7"/>
+  <rect x="236" y="88" width="56" height="50" rx="7" fill="#fff"/>
+  <text x="264" y="125" font-family="Arial, sans-serif" font-weight="700" font-size="36" text-anchor="middle" fill="#0d0f13">1</text>
+  <rect x="292" y="88" width="118" height="50" rx="7" fill="#e10600"/>
+  <text x="351" y="125" font-family="Arial, sans-serif" font-weight="700" font-size="34" text-anchor="middle" fill="#fff">RACE</text>
+  <line x1="300" y1="138" x2="350" y2="174" stroke="#c8cdd7" stroke-width="4"/>
+</svg>

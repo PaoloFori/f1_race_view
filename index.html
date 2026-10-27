@@ -1,0 +1,2268 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 Race View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f13; --panel:#151820; --panel2:#1b1f29; --line:#262b36; --line2:#323846;
+  --text:#eceef2; --text2:#a3aab7; --muted:#6c7483; --accent:#e10600;
+  --soft:#e8002d; --medium:#ffd12e; --hard:#eeeeea; --inter:#43b02a; --wet:#2f7fd6;
+  --ok:#3fbf6f; --warn:#f5b400; --crit:#ff3b3b;
+  --fs: clamp(12px, 0.78vw, 17px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-size:15px;background:var(--bg);color:var(--text);font-family:"Titillium Web",system-ui,sans-serif;font-size:var(--fs)}
+button,select,input{font:inherit;color:inherit}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+#app{display:grid;height:100vh;grid-template-columns:minmax(0,1fr) 380px;grid-template-columns:minmax(0,1fr) clamp(340px,24vw,520px);grid-template-rows:auto minmax(0,1fr) auto}
+header{grid-column:1/3;display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:22px;height:6px;background:var(--accent);transform:skewX(-25deg)}
+select,input[type=text],input[type=password],input[type=number]{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:5px 8px}
+.btn{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:5px 12px;cursor:pointer}
+.btn:hover{border-color:var(--text2)} .btn.primary{background:var(--accent);border-color:var(--accent);font-weight:600}
+.btn.on{background:#2a3040;border-color:var(--text2)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.seg button{background:var(--panel2);border:0;padding:5px 12px;cursor:pointer;color:var(--text2)}
+.seg button.on{background:#2c3242;color:var(--text)}
+.spacer{flex:1}
+#wx{color:var(--text2);display:flex;gap:12px}
+#left{display:grid;grid-template-rows:minmax(0,1.55fr) minmax(0,1fr);min-height:0;min-width:0}
+#mapwrap{position:relative;min-height:0;background:radial-gradient(ellipse at center,#141821 0%,#0d0f13 75%)}
+#map{position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;display:block}
+.ov{position:absolute;pointer-events:none}
+#lapbox{left:16px;top:12px;display:flex;align-items:center;gap:10px}
+#lapbox .lap{font-size:2em;font-weight:700;line-height:1}
+#lapbox .lap small{font-size:.5em;color:var(--text2);font-weight:600}
+.tstatus{padding:3px 10px;border-radius:4px;font-weight:700;letter-spacing:.05em;font-size:.95em}
+.ts-GREEN{background:#123d22;color:#7ee2a2}.ts-SC,.ts-VSC{background:#4a3b00;color:#ffd84d}.ts-RED{background:#4a0d0d;color:#ff8a8a}.ts-FINISH{background:#eee;color:#111}
+#rcbox{right:14px;top:12px;max-width:46%;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+#rcbox div{background:rgba(21,24,32,.88);border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:.85em;color:var(--text2)}
+#rcbox div:first-child{color:var(--text)}
+#buffering{left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(21,24,32,.9);padding:8px 14px;border-radius:6px;display:none}
+#ana{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+#tabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line)}
+#tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:6px 12px;color:var(--text2);cursor:pointer;font-weight:600}
+#tabs button.on{color:var(--text);border-color:var(--accent)}
+#tabs .hint{margin-left:auto;color:var(--muted);font-size:.85em;align-self:center}
+#anabody{flex:1;min-height:0;position:relative;overflow:auto;padding:8px 12px}
+#side{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+#side h3{margin:0;padding:8px 12px;font-size:.9em;color:var(--text2);letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+#side h3 .seg button{padding:2px 8px;font-size:.9em}
+#board{flex:1;overflow:auto}
+.row{display:grid;grid-template-columns:2.1em 4px minmax(0,1fr) 5.2em 4.2em 2.4em 5.4em;align-items:center;gap:8px;padding:5px 12px 5px 8px;border-bottom:1px solid #1d212a;cursor:pointer}
+.row:hover{background:#1c202a}.row.sel{background:#232a3a}.row.dim{opacity:.45}
+.row .p{font-weight:700;text-align:right}
+.row .bar{height:1.5em;border-radius:2px}
+.row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm b{font-weight:700;margin-right:6px}.row .nm span{color:var(--muted);font-size:.85em}
+.row .g{text-align:right}
+.row .ty{display:flex;align-items:center;gap:5px}
+.row .pit{color:var(--text2);text-align:center}
+.row .ll{text-align:right;color:var(--text2)}
+.badge{font-size:.72em;font-weight:700;padding:1px 5px;border-radius:3px;background:#333a48;color:#fff;margin-left:4px}
+.badge.pitnow{background:var(--warn);color:#111}
+.tyre{width:1.45em;height:1.45em;border-radius:50%;border:3px solid;display:inline-flex;align-items:center;justify-content:center;font-size:.7em;font-weight:700;background:#0d0f13;color:var(--text)}
+footer{grid-column:1/3;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-top:1px solid var(--line);flex-wrap:wrap}
+#scrub{flex:1;min-width:200px;accent-color:var(--accent)}
+#clock{min-width:12em;color:var(--text2)}
+#status{color:var(--text2);font-size:.9em}
+#status.err{color:#ff8a8a}
+.tip{position:fixed;pointer-events:none;background:#0b0d11;border:1px solid var(--line2);border-radius:6px;padding:6px 9px;font-size:.85em;z-index:50;display:none;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.tip .r{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:12px;border:1px solid var(--line2);cursor:pointer;font-size:.85em;color:var(--text2);background:none}
+.chip.on{color:var(--text);border-color:var(--text2);background:#232838}
+.chip i{width:10px;height:3px;display:inline-block}
+table.pt{border-collapse:collapse;width:100%}
+table.pt th{font-weight:600;color:var(--muted);text-align:left;font-size:.85em;padding:3px 6px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+table.pt td{padding:3px 6px;border-bottom:1px solid #1d212a}
+table.pt td.n{text-align:right}
+table.pt th.n{text-align:right}
+.up{color:#7ee2a2}.dn{color:#ff9a9a}
+.cols{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+.battle{padding:5px 0;border-bottom:1px solid #1d212a}
+.battle b{font-weight:700}
+.note{color:var(--muted);font-size:.82em;margin-top:6px}
+.empty{color:var(--muted);padding:20px;text-align:center}
+#modal{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:60}
+#modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:18px;width:min(460px,92vw);display:flex;flex-direction:column;gap:10px}
+#modal h2{margin:0;font-size:1.2em}
+#modal p{margin:0;color:var(--text2);font-size:.9em}
+#modal label{display:flex;flex-direction:column;gap:3px;font-size:.88em;color:var(--text2)}
+#delaywrap{display:none;align-items:center;gap:8px}
+#delay{accent-color:var(--accent)}
+svg text{font-family:"Titillium Web",system-ui,sans-serif}
+#svgwrap{overflow-x:auto}
+.tblwrap{overflow-x:auto}
+#modal .chk{flex-direction:row;align-items:center;gap:8px}
+
+/* ---------- TV: interfaccia "a 3 metri" e navigazione col telecomando ---------- */
+body.tv{font-size:20px;--fs:clamp(14px,1.05vw,26px)}
+body.tv .hint-kb{display:none}
+body.tv :focus{outline:none}
+body.tv .focus{outline:3px solid #fff !important;outline-offset:2px;border-radius:6px;box-shadow:0 0 0 6px rgba(225,6,0,.55)}
+body.tv .row.focus{outline-offset:-3px}
+#tvBtn.on{background:#2a3040;border-color:var(--text2)}
+body.tv #app{grid-template-columns:minmax(0,1fr) 33vw}
+body.tv #anabody svg text{font-size:15px}
+body.tv .chip{font-size:.95em;padding:3px 10px}
+
+/* ---------- Telefono (verticale o orizzontale) ---------- */
+@media (max-width: 820px), (max-height: 520px){
+  html,body{height:auto}
+  #app{display:flex;flex-direction:column;height:auto;padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+  header{gap:8px;padding:6px 10px}
+  #mapwrap{order:1} #side{order:2} #ana{order:3}
+  table.pt td,table.pt th{white-space:nowrap}
+  .brand{font-size:.95em}
+  #title{order:10;width:100%;font-size:.95em}
+  #replayPick{display:flex;gap:6px;width:100%}
+  #replayPick #race{flex:1;min-width:0;max-width:none}
+  #wx{font-size:.85em;gap:8px}
+  #left{display:contents}
+  #mapwrap{height:52vh;height:min(58vh,560px)}
+  #rcbox{max-width:60%}
+  #rcbox div:nth-child(n+2){display:none}
+  #rcbox{top:52px;left:14px;right:auto;max-width:calc(100% - 28px);align-items:flex-start}
+  #lapbox .lap{font-size:1.6em}
+  #side{border-left:0;border-top:1px solid var(--line)}
+  #board{overflow:visible}
+  .row{grid-template-columns:1.8em 4px minmax(0,1fr) 4.9em 3.6em 1.5em;gap:6px;padding:7px 10px 7px 6px}
+  .row .ll,.row .nm span{display:none}
+  #ana{border-top:1px solid var(--line)}
+  #tabs{overflow-x:auto;padding:4px 6px 0}
+  #tabs button{white-space:nowrap;padding:8px 10px}
+  #tabs .hint{display:none}
+  #anabody{height:auto;min-height:360px;overflow:visible}
+  .cols{grid-template-columns:1fr}
+  footer{position:fixed;left:0;right:0;bottom:0;z-index:30;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+  footer [data-skip="-60"],footer [data-skip="60"]{display:none}
+  #scrub{order:-1;width:100%;flex-basis:100%}
+  #clock{min-width:0;font-size:.85em}
+  #status{width:100%}
+  #delaywrap{flex-wrap:wrap}
+  .btn{padding:7px 12px}
+}
+
+.badge.push{background:var(--accent)}
+.badge.box{background:#262b36;color:var(--muted)}
+.badge.elimb{background:#4a1a1a;color:#ff9a9a}
+.row.elim{background:rgba(225,6,0,.07)}
+.row.elim .p{color:#ff8a8a}
+.row.cutrow{border-top:2px dashed #a33}
+.row.out{opacity:.55}
+.row .g small{display:block;color:var(--muted);font-size:.78em}
+#cd{position:absolute;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;padding:16px;overflow:auto;background:radial-gradient(ellipse at center,#141821 0%,#0d0f13 80%);z-index:5}
+#cd.on{display:flex}
+.cdbox{max-width:34em;width:100%;text-align:center;display:flex;flex-direction:column;gap:.6em;align-items:center}
+.cdk{color:var(--muted);letter-spacing:.12em;font-size:.85em;font-weight:600}
+.cdn{font-size:1.5em;font-weight:700}
+.cdt{font-size:3.2em;font-weight:500;line-height:1.05;color:var(--text)}
+.cdw{color:var(--text2)}
+#cdList{width:100%;text-align:left;border-top:1px solid var(--line);margin-top:.4em}
+#cdList div{display:flex;justify-content:space-between;gap:12px;padding:.35em .2em;border-bottom:1px solid #1d212a;color:var(--text2)}
+#cdList div.nx{color:var(--text);font-weight:700}
+#cdList div.pst{opacity:.45;text-decoration:line-through}
+.cdnote{color:var(--muted);font-size:.85em}
+table.pt td.fast{color:#d59cff;font-weight:700}
+table.pt tr.cut td{border-top:2px dashed #a33}
+table.pt tr.eo td{color:var(--muted)}
+.tt{display:inline-flex;align-items:center;gap:4px}
+.tt .tyre{font-size:.62em}
+.sec-best{color:#d59cff;font-weight:700}
+.sec-pb{color:#7ee2a2}
+.attempts{display:flex;flex-wrap:wrap;gap:4px}
+.att{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 3px;border:1px solid var(--line2);border-radius:12px;font-size:.88em}
+.att .tyre{font-size:.62em}
+.att.bst{border-color:#d59cff;color:#e6c4ff;font-weight:700}
+.att.del{text-decoration:line-through;color:var(--muted)}
+#phbtns{display:none;gap:4px}
+@media (max-width: 820px), (max-height: 520px){
+  .row.q{grid-template-columns:1.8em 4px minmax(0,1fr) 4.4em 3.4em 5em}
+  .row.q .ll{display:block}
+  .row.q .pit{display:none}
+  .cdt{font-size:2.4em}
+}
+@media (max-width:1700px){.row .nm span{display:none}}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><i></i>F1 RACE VIEW</div>
+    <div class="seg" id="modeSeg"><button data-m="race" class="on">Gara</button><button data-m="quali">Qualifiche</button><button data-m="live">Live</button></div>
+    <span id="replayPick"><select id="year"></select> <select id="race" style="max-width:22em"></select> <button class="btn primary" id="loadBtn">Carica</button></span>
+    <strong id="title"></strong>
+    <span class="spacer"></span>
+    <label id="lapsLbl" style="color:var(--text2)">Giri <input type="number" id="totLaps" min="1" max="99" style="width:4.2em"></label>
+    <div id="wx"></div>
+    <button class="btn" id="tvBtn" title="Modalità TV (telecomando)">📺 TV</button>
+    <button class="btn" id="fsBtn" title="Schermo intero (F)">⛶</button>
+  </header>
+
+  <section id="left">
+    <div id="mapwrap">
+      <canvas id="map"></canvas>
+      <div class="ov" id="lapbox"></div>
+      <div class="ov" id="rcbox"></div>
+      <div class="ov" id="buffering">Carico le posizioni…</div>
+      <div id="cd"></div>
+    </div>
+    <div id="ana">
+      <div id="tabs">
+        <button data-t="qtable" data-k="q">Tempi</button>
+        <button data-t="qsect" data-k="q">Settori</button>
+        <button data-t="qevo" data-k="q">Evoluzione pista</button>
+        <button data-t="qtyres" data-k="q">Tentativi &amp; gomme</button>
+        <button data-t="pace" data-k="r" class="on">Passo gara</button>
+        <button data-t="tyres" data-k="r">Gomme &amp; strategia</button>
+        <button data-t="speed">Velocità</button>
+        <button data-t="proj" data-k="r">Previsioni</button>
+        <span class="hint hint-kb">Spazio play/pausa · ←/→ ±5 s · ↑/↓ velocità · numeri = schede</span>
+      </div>
+      <div id="anabody"><div class="empty">Scegli una gara e premi <b>Carica</b>.</div></div>
+    </div>
+  </section>
+
+  <aside id="side">
+    <h3><span id="bTitle">CLASSIFICA</span> <span class="seg" id="gapSeg"><button data-g="int" class="on">Distacco</button><button data-g="lead">Dal leader</button></span></h3>
+    <div id="board"></div>
+  </aside>
+
+  <footer>
+    <button class="btn" id="playBtn" title="Spazio">▶</button>
+    <button class="btn" data-skip="-60">−60s</button>
+    <button class="btn" data-skip="-10">−10s</button>
+    <button class="btn" data-skip="10">+10s</button>
+    <button class="btn" data-skip="60">+60s</button>
+    <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select>
+    <span id="phbtns"><button class="btn" data-ph="1">Q1</button><button class="btn" data-ph="2">Q2</button><button class="btn" data-ph="3">Q3</button></span>
+    <input type="range" id="scrub" min="0" max="1000" value="0">
+    <span id="delaywrap">Ritardo sullo streaming <input type="range" id="delay" min="0" max="120" value="45"> <span id="delayVal" class="mono">45 s</span>
+      <button class="btn" data-dl="-1">−1</button><button class="btn" data-dl="1">+1</button></span>
+    <span id="clock" class="mono"></span>
+    <span id="status"></span>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<div id="modal"><div class="box">
+  <h2>Modalità live</h2>
+  <p>I dati in tempo reale di OpenF1 richiedono l'abbonamento sponsor. Incolla un access token, oppure accedi con le tue credenziali OpenF1 (restano solo in memoria, non vengono salvate).</p>
+  <label>Access token <input type="password" id="tok"></label>
+  <p style="text-align:center">— oppure —</p>
+  <label>Username OpenF1 <input type="text" id="user" autocomplete="username"></label>
+  <label>Password <input type="password" id="pass" autocomplete="current-password"></label>
+  <label class="chk"><input type="checkbox" id="remember"> Ricorda le credenziali su questo dispositivo (comodo sulla TV; usalo solo su dispositivi tuoi)</label>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="mCancel">Annulla</button><button class="btn" id="mCd">Solo conto alla rovescia</button><button class="btn primary" id="mGo">Avvia live</button></div>
+  <p id="mErr" style="color:#ff8a8a"></p>
+</div></div>
+
+<script>
+if(!Array.prototype.flat){Object.defineProperty(Array.prototype,'flat',{configurable:true,writable:true,value:function(d){d=d===undefined?1:d;return d<1?this.slice():this.reduce(function(a,v){return a.concat(Array.isArray(v)?v.flat(d-1):v)},[])}})}
+if(!Array.prototype.flatMap){Object.defineProperty(Array.prototype,'flatMap',{configurable:true,writable:true,value:function(f,t){return this.map(f,t).flat()}})}
+"use strict";
+const API = "https://api.openf1.org";
+const COMP = { SOFT: "#e8002d", MEDIUM: "#ffd12e", HARD: "#eeeeea", INTERMEDIATE: "#43b02a", WET: "#2f7fd6" };
+const COMP_L = { SOFT: "S", MEDIUM: "M", HARD: "H", INTERMEDIATE: "I", WET: "W" };
+const MAX_STINT = { SOFT: 24, MEDIUM: 34, HARD: 44, INTERMEDIATE: 40, WET: 40 };
+const FUEL_EFFECT = 0.035;
+const S = {
+  mode: "replay",
+  token: null,
+  session: null,
+  drivers: {},
+  laps: {},
+  stints: {},
+  pits: {},
+  posEv: {},
+  intEv: {},
+  rc: [],
+  wx: [],
+  track: null,
+  view: null,
+  loc: {},
+  locRanges: [],
+  locErrAt: 0,
+  locLast: 0,
+  t: 0,
+  tStart: 0,
+  tEnd: 1,
+  t0: 0,
+  playing: false,
+  speed: 1,
+  delay: 45,
+  totalLaps: null,
+  selected: null,
+  tab: "pace",
+  gapMode: "int",
+  paceSel: /* @__PURE__ */ new Set(),
+  anaSig: "",
+  lastUi: 0,
+  lastAna: 0,
+  liveTimer: null,
+  kind: "race",
+  pick: "race",
+  phased: false,
+  sprintQ: false,
+  phases: [],
+  deleted: /* @__PURE__ */ new Set(),
+  qref: null,
+  cdTimer: null,
+  cdOnly: false
+};
+const $ = (s) => document.querySelector(s);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function pd(s) {
+  if (!s) return null;
+  const m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?(.*)$/.exec(s);
+  if (!m) {
+    const v = Date.parse(s);
+    return isNaN(v) ? null : v;
+  }
+  const frac = m[2] ? m[2].slice(0, 4).padEnd(4, "0") : "";
+  return Date.parse(m[1] + frac + (m[3] || "Z"));
+}
+const isoQ = (ms) => new Date(ms).toISOString().replace("Z", "+00:00");
+function median(a) {
+  if (!a.length) return null;
+  const b = [...a].sort((x, y) => x - y), m = b.length >> 1;
+  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
+}
+function bs(arr, t) {
+  let lo = 0, hi = arr.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = lo + hi >> 1;
+    if (arr[mid].t <= t) {
+      ans = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return ans;
+}
+function fmtLap(s) {
+  if (s == null) return "—";
+  const m = Math.floor(s / 60), r = s - m * 60;
+  return (m ? m + ":" : "") + (m ? r.toFixed(3).padStart(6, "0") : r.toFixed(3));
+}
+function fmtClock(ms) {
+  const neg = ms < 0;
+  ms = Math.abs(ms);
+  const s = Math.floor(ms / 1e3);
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
+  return (neg ? "−" : "") + (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(x).padStart(2, "0");
+}
+function inkOn(hex) {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111" : "#fff";
+}
+function esc(s) {
+  return String(s != null ? s : "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+}
+function setStatus(msg, err) {
+  const el = $("#status");
+  el.textContent = msg || "";
+  el.className = err ? "err" : "";
+}
+let gate = Promise.resolve();
+const reqTimes = [];
+async function throttle() {
+  for (; ; ) {
+    const now = Date.now();
+    while (reqTimes.length && now - reqTimes[0] > 6e4) reqTimes.shift();
+    const perMin = S.token ? 500 : 28, minGap = S.token ? 120 : 360;
+    const last = reqTimes[reqTimes.length - 1] || 0;
+    if (reqTimes.length >= perMin) {
+      await sleep(6e4 - (now - reqTimes[0]) + 50);
+      continue;
+    }
+    if (now - last < minGap) {
+      await sleep(minGap - (now - last));
+      continue;
+    }
+    reqTimes.push(now);
+    return;
+  }
+}
+async function api(ep, params = []) {
+  if (window.F1DEMO) return window.F1DEMO.api(ep, params);
+  const qs = params.map(([k, op, v]) => k + op + encodeURIComponent(v)).join("&");
+  const url = `${API}/v1/${ep}${qs ? "?" + qs : ""}`;
+  for (let a = 0; a < 5; a++) {
+    const p = gate.then(throttle);
+    gate = p.catch(() => {
+    });
+    await p;
+    let r;
+    try {
+      r = await fetch(url, { headers: S.token ? { Authorization: "Bearer " + S.token, accept: "application/json" } : { accept: "application/json" } });
+    } catch (e) {
+      if (a === 4) throw new Error("Impossibile contattare OpenF1 (connessione assente o bloccata)");
+      await sleep(1500);
+      continue;
+    }
+    if (r.status === 429) {
+      setStatus("Limite richieste OpenF1, attendo…");
+      await sleep(3e3 * (a + 1));
+      continue;
+    }
+    if (r.status === 404) return [];
+    if (r.status === 401 || r.status === 403) throw new Error(S.token ? "Token OpenF1 non valido o scaduto" : "OpenF1 nega l'accesso: durante una sessione live i dati gratuiti sono sospesi, riprova a sessione finita");
+    if (!r.ok) {
+      if (a === 4) throw new Error("OpenF1 ha risposto " + r.status);
+      await sleep(1500);
+      continue;
+    }
+    const j = await r.json();
+    return Array.isArray(j) ? j : [];
+  }
+  throw new Error("OpenF1: troppe richieste, riprova tra un minuto");
+}
+async function initYears() {
+  if (window.F1DEMO) {
+    window.F1DEMO.init();
+    return;
+  }
+  const y0 = (/* @__PURE__ */ new Date()).getUTCFullYear(), sel = $("#year");
+  for (let y = y0; y >= 2023; y--) sel.add(new Option(y, y));
+  sel.onchange = () => loadYear(+sel.value);
+  const py = +pref("year");
+  if (py >= 2023 && py <= y0) sel.value = py;
+  await loadYear(+sel.value);
+}
+async function loadYear(y) {
+  const sel = $("#race");
+  sel.innerHTML = "";
+  setStatus("Carico il calendario…");
+  try {
+    const ss = (await api("sessions", [["year", "=", y], ["session_type", "=", S.pick === "quali" ? "Qualifying" : "Race"]])).sort((a, b) => pd(a.date_start) - pd(b.date_start));
+    const now = Date.now();
+    let lastPast = null;
+    for (const s of ss) {
+      const done = pd(s.date_end) < now - 20 * 6e4;
+      const d = new Date(pd(s.date_start));
+      const o = new Option(`${d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })} · ${s.location || s.country_name} · ${sessLabel(s)}`, s.session_key);
+      o.disabled = !done || s.is_cancelled;
+      o._s = s;
+      sel.add(o);
+      if (done && !s.is_cancelled) lastPast = o;
+    }
+    if (lastPast) sel.value = lastPast.value;
+    const pr = pref("race");
+    const po = pr && [...sel.options].find((o) => o.value == pr && !o.disabled);
+    if (po) sel.value = po.value;
+    setStatus(ss.length ? "" : "Nessuna sessione trovata per il " + y);
+  } catch (e) {
+    setStatus(e.message, true);
+  }
+}
+function resetData() {
+  Object.assign(S, { drivers: {}, laps: {}, stints: {}, pits: {}, posEv: {}, intEv: {}, rc: [], wx: [], track: null, view: null, loc: {}, locRanges: [], locLast: 0, anaSig: "", paceSel: /* @__PURE__ */ new Set(), selected: null, phases: [], deleted: /* @__PURE__ */ new Set(), qref: null });
+}
+async function loadSession(sess) {
+  var _a, _b;
+  S.playing = false;
+  updatePlayBtn();
+  resetData();
+  S.ready = false;
+  S.session = sess;
+  S.kind = kindOf(sess);
+  S.phased = isPhased(sess);
+  S.sprintQ = /sprint/i.test(sess.session_name || "");
+  applyKindUI();
+  $("#title").textContent = `${sess.location || ""} ${sess.year || ""} · ${sessLabel(sess)}`;
+  $("#anabody").innerHTML = '<div class="empty">Carico i dati…</div>';
+  await fetchCore(true);
+  const all = Object.values(S.laps).flat();
+  const sessStart = pd(sess.date_start), sessEnd = pd(sess.date_end);
+  if (S.kind === "quali") {
+    const starts = all.map((l) => l.t).filter(Boolean);
+    S.t0 = (_b = (_a = S.phases[0]) == null ? void 0 : _a.t0) != null ? _b : starts.length ? Math.min(...starts) : sessStart;
+    if (S.mode === "replay") {
+      S.tStart = Math.max(sessStart, S.t0 - 12e4);
+      const ends = all.map((l) => l.end).filter(Boolean);
+      S.tEnd = ends.length ? Math.max(...ends) + 9e4 : sessEnd;
+      S.t = S.t0 - 3e4;
+    }
+  } else {
+    const l1 = all.filter((l) => l.n === 1 && l.t).map((l) => l.t), l2 = all.filter((l) => l.n === 2 && l.t).map((l) => l.t);
+    S.t0 = l1.length ? Math.min(...l1) : l2.length ? Math.min(...l2) - 11e4 : sessStart;
+    if (S.mode === "replay") {
+      S.totalLaps = Math.max(0, ...all.map((l) => l.n)) || null;
+      $("#totLaps").value = S.totalLaps || "";
+      S.tStart = Math.max(sessStart, S.t0 - 3 * 6e4);
+      const ends = all.map((l) => l.end).filter(Boolean);
+      S.tEnd = ends.length ? Math.max(...ends) + 9e4 : sessEnd;
+      S.t = S.t0 - 2e4;
+    } else {
+      if (!$("#totLaps").value) $("#totLaps").value = 57;
+      S.totalLaps = +$("#totLaps").value;
+    }
+  }
+  setStatus("Ricostruisco il tracciato…");
+  await buildTrack();
+  setStatus("");
+  if (S.mode === "live") {
+    S.locLast = Date.now() - S.delay * 1e3 - 3e4;
+    livePoll();
+  }
+  updatePhaseBtns();
+  S.ready = true;
+  S.anaSig = "";
+  resize();
+}
+async function fetchCore(full, since) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+  const q = S.kind === "quali";
+  const sk = S.session.session_key;
+  const P2 = [["session_key", "=", sk]];
+  const inc = since ? [...P2, ["date", ">", isoQ(since)]] : P2;
+  const total = q ? 6 : 8;
+  let done = 0;
+  const get = (ep, p) => api(ep, p).then((r) => {
+    done++;
+    if (full) setStatus(`Scarico i dati ${done}/${total}…`);
+    return r;
+  });
+  const none = Promise.resolve([]);
+  const [drv, laps, stints, pits, rc, wx, pos, ints] = await Promise.all([
+    full ? get("drivers", P2) : Promise.resolve(null),
+    get("laps", P2),
+    get("stints", P2),
+    get("pit", P2),
+    get("race_control", P2),
+    get("weather", P2),
+    q ? none : get("position", full ? P2 : inc),
+    q ? none : get("intervals", full ? P2 : inc)
+  ]);
+  if (drv) {
+    for (const d of drv) {
+      if (S.drivers[d.driver_number]) continue;
+      S.drivers[d.driver_number] = { num: d.driver_number, acr: d.name_acronym || String(d.driver_number), name: d.full_name || d.broadcast_name || "", last: d.last_name || "", team: d.team_name || "", color: "#" + (d.team_colour || "8a8f99") };
+    }
+    const byTeam = {};
+    for (const d of Object.values(S.drivers).sort((a, b) => a.num - b.num)) {
+      (byTeam[_a = d.team] || (byTeam[_a] = [])).push(d);
+    }
+    for (const arr of Object.values(byTeam)) arr.forEach((d, i) => d.dash = i > 0);
+  }
+  S.laps = {};
+  for (const l of laps) {
+    ((_b = S.laps)[_c = l.driver_number] || (_b[_c] = [])).push({ n: l.lap_number, t: pd(l.date_start), dur: l.lap_duration, pitOut: !!l.is_pit_out_lap, st: l.st_speed, i1: l.i1_speed, i2: l.i2_speed, s1: l.duration_sector_1, s2: l.duration_sector_2, s3: l.duration_sector_3 });
+  }
+  for (const arr of Object.values(S.laps)) {
+    arr.sort((a, b) => a.n - b.n);
+    arr.forEach((l, i) => {
+      const nx = arr[i + 1];
+      if (!l.t && nx && nx.t && l.dur) l.t = nx.t - l.dur * 1e3;
+      if (q) {
+        l.end = l.dur > 0 && l.t ? l.t + l.dur * 1e3 : nx && nx.t ? Math.min(nx.t, (l.t || nx.t) + 15e4) : S.mode === "replay" && l.t ? l.t + 15e4 : null;
+      } else {
+        l.end = nx && nx.t ? nx.t : l.t && l.dur ? l.t + l.dur * 1e3 : null;
+      }
+    });
+  }
+  S.stints = {};
+  for (const s of stints) ((_d = S.stints)[_e = s.driver_number] || (_d[_e] = [])).push({ c: (s.compound || "?").toUpperCase(), a: s.lap_start, b: s.lap_end, age0: s.tyre_age_at_start || 0, no: s.stint_number });
+  for (const a of Object.values(S.stints)) a.sort((x, y) => x.no - y.no);
+  S.pits = {};
+  for (const p of pits) ((_f = S.pits)[_g = p.driver_number] || (_f[_g] = [])).push({ t: pd(p.date), lap: p.lap_number, lane: (_h = p.lane_duration) != null ? _h : p.pit_duration, stop: p.stop_duration });
+  S.rc = rc.map((m) => ({ t: pd(m.date), msg: m.message || "", flag: (m.flag || "").toUpperCase(), cat: m.category, scope: m.scope, lap: m.lap_number, drv: m.driver_number })).filter((m) => m.t).sort((a, b) => a.t - b.t);
+  S.wx = wx.map((w) => ({ t: pd(w.date), air: w.air_temperature, track: w.track_temperature, rain: w.rainfall, hum: w.humidity })).sort((a, b) => a.t - b.t);
+  S.deleted = /* @__PURE__ */ new Set();
+  if (q) for (const m of S.rc) {
+    if (!/DELETED/i.test(m.msg)) continue;
+    const ln = m.lap || (/LAP\s+(\d+)/i.exec(m.msg) || [])[1], dn = m.drv || (/CAR\s+(\d+)/i.exec(m.msg) || [])[1];
+    if (ln && dn) S.deleted.add(dn + "|" + ln);
+  }
+  if (full) {
+    S.posEv = {};
+    S.intEv = {};
+  }
+  for (const p of pos) ((_i = S.posEv)[_j = p.driver_number] || (_i[_j] = [])).push({ t: pd(p.date), p: p.position });
+  for (const p of ints) ((_k = S.intEv)[_l = p.driver_number] || (_k[_l] = [])).push({ t: pd(p.date), gap: p.gap_to_leader, int: p.interval });
+  for (const o of [S.posEv, S.intEv]) for (const a of Object.values(o)) a.sort((x, y) => x.t - y.t);
+  if (q) {
+    computePhases();
+    updatePhaseBtns();
+  }
+}
+async function buildTrack() {
+  const sk = S.session.session_key;
+  const ranked = Object.entries(S.laps).sort((a, b) => b[1].length - a[1].length);
+  for (const [num, laps] of ranked.slice(0, 3)) {
+    const pitL = new Set((S.pits[num] || []).map((p) => p.lap));
+    const cands = laps.filter((l) => l.n >= (S.kind === "quali" ? 2 : 3) && l.dur && l.t && !l.pitOut && !pitL.has(l.n)).sort((a, b) => a.dur - b.dur).slice(0, 2);
+    for (const l of cands) {
+      const rows = await api("location", [["session_key", "=", sk], ["driver_number", "=", num], ["date", ">=", isoQ(l.t)], ["date", "<=", isoQ(l.t + l.dur * 1e3 + 400)]]);
+      const pts = rows.filter((r) => r.x || r.y).map((r) => [r.x, r.y]);
+      if (pts.length > 60) {
+        S.track = { pts };
+        return;
+      }
+    }
+  }
+  S.track = null;
+}
+function computeView(W, H) {
+  var _a;
+  let pts = (_a = S.track) == null ? void 0 : _a.pts;
+  if (!pts) {
+    const any = Object.values(S.loc).find((a) => a.length > 200);
+    if (!any) return null;
+    pts = any.slice(0, 600).map((p) => [p.x, p.y]);
+  }
+  const pad = Math.max(56, Math.min(W, H) * 0.09);
+  let best = null;
+  for (let deg = 0; deg < 180; deg += 3) {
+    const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    let x0 = 1e12, x1 = -1e12, y0 = 1e12, y1 = -1e12;
+    for (const [x, y] of pts) {
+      const rx = x * c - y * s, ry = x * s + y * c;
+      if (rx < x0) x0 = rx;
+      if (rx > x1) x1 = rx;
+      if (ry < y0) y0 = ry;
+      if (ry > y1) y1 = ry;
+    }
+    const sc = Math.min((W - 2 * pad) / (x1 - x0 || 1), (H - 2 * pad - 30) / (y1 - y0 || 1));
+    if (!best || sc > best.sc) best = { c, s, sc, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, W, H };
+  }
+  return best;
+}
+function P(x, y) {
+  const v = S.view;
+  const rx = x * v.c - y * v.s, ry = x * v.s + y * v.c;
+  return [v.W / 2 + (rx - v.cx) * v.sc, v.H / 2 + 15 - (ry - v.cy) * v.sc];
+}
+function ingestLoc(rows) {
+  var _a, _b;
+  const by = {};
+  for (const r of rows) {
+    if (!r.x && !r.y) continue;
+    (by[_a = r.driver_number] || (by[_a] = [])).push({ t: pd(r.date), x: r.x, y: r.y });
+  }
+  for (const [num, arr] of Object.entries(by)) {
+    arr.sort((a, b) => a.t - b.t);
+    const cur = (_b = S.loc)[num] || (_b[num] = []);
+    if (!cur.length || arr[0].t >= cur[cur.length - 1].t) {
+      for (const p of arr) cur.push(p);
+    } else {
+      for (const p of arr) cur.push(p);
+      cur.sort((a, b) => a.t - b.t);
+    }
+    if (arr.length) S.locLast = Math.max(S.locLast, arr[arr.length - 1].t);
+  }
+}
+const covered = (t) => S.locRanges.find((r) => t >= r.a && t < r.b);
+function ensureLoc(t) {
+  if (Date.now() - S.locErrAt < 5e3) return;
+  const W = Math.min(300, Math.max(60, 40 * S.speed)) * 1e3;
+  const r = covered(t);
+  if (!r) {
+    requestLoc(t - 3e3, t - 3e3 + W);
+    return;
+  }
+  if (r.b - t < W * 0.65 && r.b < S.tEnd && !covered(r.b + 1)) requestLoc(r.b, r.b + W);
+}
+async function requestLoc(a, b) {
+  for (const r of S.locRanges) {
+    if (r.a <= a && r.b > a) a = r.b;
+    if (r.a > a && r.a < b) b = r.a;
+  }
+  if (b - a < 1e3) return;
+  const rg = { a, b, state: "pending" };
+  S.locRanges.push(rg);
+  try {
+    const rows = await api("location", [["session_key", "=", S.session.session_key], ["date", ">", isoQ(a)], ["date", "<=", isoQ(b)]]);
+    ingestLoc(rows);
+    rg.state = "ok";
+    if (!S.view) S.anaSig = "";
+  } catch (e) {
+    S.locRanges.splice(S.locRanges.indexOf(rg), 1);
+    S.locErrAt = Date.now();
+    setStatus(e.message, true);
+  }
+}
+function carXY(num, t) {
+  const a = S.loc[num];
+  if (!a || !a.length) return null;
+  const i = bs(a, t);
+  if (i < 0) return null;
+  const p = a[i], q = a[i + 1];
+  if (!q || q.t - p.t > 4e3) return t - p.t < 4e3 ? p : null;
+  const f = (t - p.t) / (q.t - p.t);
+  return { x: p.x + (q.x - p.x) * f, y: p.y + (q.y - p.y) * f };
+}
+function posAt(num, t) {
+  const a = S.posEv[num];
+  if (!a || !a.length) return 99;
+  const i = bs(a, t);
+  return i < 0 ? a[0].p : a[i].p;
+}
+function intAt(num, t) {
+  const a = S.intEv[num];
+  if (!a || !a.length) return null;
+  const i = bs(a, t);
+  return i < 0 ? null : a[i];
+}
+function lapsDone(num, t) {
+  const a = S.laps[num] || [];
+  let c = 0;
+  for (const l of a) {
+    if (l.end && l.end <= t) c = l.n;
+    else break;
+  }
+  return c;
+}
+function lastLap(num, t) {
+  const a = S.laps[num] || [];
+  let r = null;
+  for (const l of a) {
+    if (l.end && l.end <= t) r = l;
+    else break;
+  }
+  return r;
+}
+function stintAt(num, lap) {
+  const a = S.stints[num] || [];
+  let r = null;
+  for (const s of a) if (s.a <= lap) r = s;
+  return r;
+}
+function pitsBefore(num, t) {
+  return (S.pits[num] || []).filter((p) => p.t && p.t <= t);
+}
+function inPit(num, t) {
+  return (S.pits[num] || []).some((p) => p.t && t >= p.t && t <= p.t + Math.max(18, p.lane || 22) * 1e3);
+}
+function order(t) {
+  return Object.keys(S.drivers).map(Number).sort((a, b) => posAt(a, t) - posAt(b, t) || a - b);
+}
+function leaderLap(t) {
+  const o = order(t);
+  return o.length ? Math.min(S.totalLaps || 999, lapsDone(o[0], t) + 1) : 0;
+}
+function trackStatus(t, noFinish) {
+  let st = "GREEN";
+  for (const m of S.rc) {
+    if (m.t > t) break;
+    const msg = m.msg.toUpperCase();
+    if (m.flag === "RED") st = "RED";
+    else if (m.flag === "CHEQUERED") st = noFinish ? st : "FINISH";
+    else if (msg.includes("VIRTUAL SAFETY CAR DEPLOYED")) st = "VSC";
+    else if (msg.includes("SAFETY CAR DEPLOYED")) st = "SC";
+    else if ((m.flag === "GREEN" || m.flag === "CLEAR") && (m.scope === "Track" || msg.includes("TRACK CLEAR"))) st = st === "FINISH" ? st : "GREEN";
+  }
+  return st;
+}
+const TS_LABEL = { GREEN: "BANDIERA VERDE", SC: "SAFETY CAR", VSC: "VIRTUAL SC", RED: "BANDIERA ROSSA", FINISH: "FINE GARA" };
+function driverStats(num, t) {
+  const pitLaps = new Set(pitsBefore(num, t).map((p) => p.lap));
+  const done = (S.laps[num] || []).filter((l) => l.end && l.end <= t && l.dur > 0);
+  let clean = done.filter((l) => l.n > 1 && !l.pitOut && !pitLaps.has(l.n));
+  const med = median(clean.map((l) => l.dur));
+  if (med) clean = clean.filter((l) => l.dur <= med * 1.07);
+  const lapNow = lapsDone(num, t) + 1;
+  const st = stintAt(num, lapNow);
+  const stClean = st ? clean.filter((l) => l.n >= st.a) : [];
+  const recent = (stClean.length >= 3 ? stClean : clean).slice(-5);
+  const pace = median(recent.map((l) => l.dur));
+  let slope = null;
+  if (stClean.length >= 4) {
+    const xs = stClean.map((l) => l.n), ys = stClean.map((l) => l.dur);
+    const mx = xs.reduce((a, b) => a + b) / xs.length, my = ys.reduce((a, b) => a + b) / ys.length;
+    let num_ = 0, den = 0;
+    xs.forEach((x, i) => {
+      num_ += (x - mx) * (ys[i] - my);
+      den += (x - mx) ** 2;
+    });
+    slope = den ? Math.max(-0.12, Math.min(0.3, num_ / den)) : null;
+  }
+  const age = st ? st.age0 + (lapNow - st.a) : null;
+  return { clean, pace, slope, deg: slope != null ? slope + FUEL_EFFECT : null, st, age, lapNow, pits: pitLaps.size };
+}
+function pitLoss(t) {
+  const v = [];
+  for (const num of Object.keys(S.pits)) {
+    const ds = driverStats(num, t);
+    if (!ds.pace) continue;
+    for (const p of pitsBefore(num, t)) {
+      const L = S.laps[num] || [];
+      const a = L.find((l) => l.n === p.lap), b = L.find((l) => l.n === p.lap + 1);
+      if ((a == null ? void 0 : a.dur) && (b == null ? void 0 : b.dur) && b.end <= t) {
+        const loss = a.dur + b.dur - 2 * ds.pace;
+        if (loss > 10 && loss < 45) v.push(loss);
+      }
+    }
+  }
+  return v.length >= 2 ? median(v) : 22;
+}
+function project(t) {
+  var _a;
+  const ord = order(t);
+  if (!ord.length) return null;
+  const leadDone = lapsDone(ord[0], t);
+  const total = S.totalLaps || +$("#totLaps").value || 0;
+  const left = Math.max(0, total - leadDone);
+  const loss = pitLoss(t);
+  const wet = ord.some((n) => {
+    const s = stintAt(n, lapsDone(n, t) + 1);
+    return s && (s.c === "INTERMEDIATE" || s.c === "WET");
+  });
+  const rows = [];
+  ord.forEach((num, i) => {
+    var _a2;
+    const ds = driverStats(num, t), d = S.drivers[num];
+    const iv = intAt(num, t);
+    let gap = i === 0 ? 0 : null;
+    if (iv && typeof iv.gap === "number") gap = iv.gap;
+    else if (iv && typeof iv.gap === "string") {
+      const m = /(\d+)\s*L/i.exec(iv.gap);
+      if (m && ds.pace) gap = +m[1] * ds.pace;
+    }
+    if (!ds.pace || gap == null) {
+      rows.push({ num, d, cur: i + 1, ds, total: null });
+      return;
+    }
+    const used = new Set((S.stints[num] || []).filter((s) => s.a <= ds.lapNow).map((s) => s.c).filter((c) => c === "SOFT" || c === "MEDIUM" || c === "HARD"));
+    const ruleStop = !wet && used.size < 2 && left > 0;
+    const maxS = MAX_STINT[(_a2 = ds.st) == null ? void 0 : _a2.c] || 35;
+    const ageStop = ds.age != null && ds.age + left > maxS * 1.15;
+    const stops = (ruleStop || ageStop) && left > 1 ? 1 : 0;
+    const k = ds.slope != null ? Math.max(0, ds.slope) : 0.03;
+    let degCost, pitLap = null;
+    if (!stops) degCost = k * left * (left + 1) / 2;
+    else {
+      const s = Math.max(1, Math.min(left - 1, Math.round(maxS - (ds.age || 0))));
+      pitLap = leadDone + s;
+      const L2 = left - s;
+      degCost = k * s * (s + 1) / 2 + -k * ((ds.age || 0) + s) * L2 + k * L2 * (L2 + 1) / 2;
+    }
+    const totalT = gap + left * ds.pace + degCost + stops * loss;
+    rows.push({ num, d, cur: i + 1, ds, gap, stops, pitLap, total: totalT, ruleStop });
+  });
+  const valid = rows.filter((r) => r.total != null).sort((a, b) => a.total - b.total);
+  valid.forEach((r, i) => r.proj = i + 1);
+  const lead = ((_a = valid[0]) == null ? void 0 : _a.total) || 0;
+  valid.forEach((r) => r.finGap = r.total - lead);
+  return { rows: [...valid, ...rows.filter((r) => r.total == null)], left, loss, total, leadDone };
+}
+const cv = $("#map"), ctx = cv.getContext("2d");
+let DPR = 1;
+function resize() {
+  const r = cv.getBoundingClientRect();
+  DPR = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * DPR);
+  cv.height = Math.round(r.height * DPR);
+  S.view = S.track || Object.keys(S.loc).length ? computeView(r.width, r.height) : null;
+  S.anaSig = "";
+}
+window.addEventListener("resize", resize);
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe($("#mapwrap"));
+let tagRects = [];
+function drawMap() {
+  var _a;
+  const W = cv.width / DPR, H = cv.height / DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if (!S.view) {
+    S.view = computeView(W, H);
+    if (!S.view) return;
+  }
+  const fs = Math.max(11, Math.min(20, W / 80));
+  const pts = (_a = S.track) == null ? void 0 : _a.pts;
+  if (pts) {
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => {
+      const [px, py] = P(x, y);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = "#2a303c";
+    ctx.lineWidth = fs * 1.15;
+    ctx.stroke();
+    ctx.strokeStyle = "#4b5363";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const [sx, sy] = P(...pts[0]), [nx, ny] = P(...pts[Math.min(3, pts.length - 1)]);
+    const ang = Math.atan2(ny - sy, nx - sx) + Math.PI / 2, L = fs * 0.9;
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sx - Math.cos(ang) * L, sy - Math.sin(ang) * L);
+    ctx.lineTo(sx + Math.cos(ang) * L, sy + Math.sin(ang) * L);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "#3a4150";
+    for (const a of Object.values(S.loc)) for (let i = 0; i < a.length; i += 4) {
+      if (Math.abs(a[i].t - S.t) < 12e4) {
+        const [px, py] = P(a[i].x, a[i].y);
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+      }
+    }
+  }
+  const cx = W / 2, cy = H / 2 + 15;
+  const isQ = S.kind === "quali";
+  const ord = ordNums(S.t);
+  const cars = [];
+  ord.forEach((num, i) => {
+    let st = null;
+    if (isQ) {
+      st = qStatus(num, S.t);
+      if (!st) return;
+    }
+    const xy = carXY(num, S.t);
+    if (!xy) return;
+    const [px, py] = P(xy.x, xy.y);
+    cars.push({ num, px, py, pos: i + 1, st });
+  });
+  for (const c of cars) {
+    const d = S.drivers[c.num], sel = S.selected === c.num, r = fs * (sel ? 0.55 : 0.42);
+    ctx.globalAlpha = isQ && c.st.kind !== "push" ? 0.5 : 1;
+    ctx.beginPath();
+    ctx.arc(c.px, c.py, r, 0, 7);
+    ctx.fillStyle = d.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = sel ? "#fff" : "#0d0f13";
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  ctx.font = `700 ${fs}px "Titillium Web", system-ui, sans-serif`;
+  tagRects = [];
+  const placed = [];
+  const hits = (r) => placed.some((q) => r.x < q.x + q.w + 2 && r.x + r.w + 2 > q.x && r.y < q.y + q.h + 2 && r.y + r.h + 2 > q.y) || cars.some((c) => c.px > r.x - 3 && c.px < r.x + r.w + 3 && c.py > r.y - 3 && c.py < r.y + r.h + 3);
+  const sorted = [...cars].sort((a, b) => (b.num === S.selected) - (a.num === S.selected) || a.pos - b.pos);
+  for (const c of sorted) {
+    const d = S.drivers[c.num];
+    ctx.globalAlpha = isQ && c.st.kind !== "push" ? 0.55 : 1;
+    const posTxt = String(c.pos), acr = d.acr;
+    const wPos = ctx.measureText(posTxt).width + fs * 0.7, wAcr = ctx.measureText(acr).width + fs * 0.8;
+    const w = wPos + wAcr, h = fs * 1.45;
+    let vx = c.px - cx, vy = c.py - cy;
+    const vl = Math.hypot(vx, vy) || 1;
+    vx /= vl;
+    vy /= vl;
+    const dirs = [[vx, vy], [-vy, vx], [vy, -vx], [-vx, -vy], [(vx - vy) / 1.41, (vy + vx) / 1.41], [(vx + vy) / 1.41, (vy - vx) / 1.41]];
+    let rect = null;
+    outer: for (const dist of [fs * 1.3, fs * 2.4, fs * 3.6, fs * 4.8]) {
+      for (const [dx, dy] of dirs) {
+        const ax = c.px + dx * dist, ay = c.py + dy * dist;
+        const r = { x: ax - w / 2 + dx * w / 2, y: ay - h / 2 + dy * h / 2, w, h };
+        if (r.x < 2 || r.y < 2 || r.x + r.w > W - 2 || r.y + r.h > H - 2) continue;
+        if (!hits(r)) {
+          rect = r;
+          break outer;
+        }
+      }
+    }
+    if (!rect) rect = { x: Math.min(W - w - 2, Math.max(2, c.px + fs)), y: Math.min(H - h - 2, Math.max(2, c.py - h / 2)), w, h };
+    placed.push(rect);
+    ctx.strokeStyle = "rgba(200,205,215,.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(c.px, c.py);
+    ctx.lineTo(Math.max(rect.x, Math.min(c.px, rect.x + rect.w)), Math.max(rect.y, Math.min(c.py, rect.y + rect.h)));
+    ctx.stroke();
+    const sel = S.selected === c.num;
+    ctx.fillStyle = sel ? "#fff" : "#0b0d11";
+    roundRect(rect.x, rect.y, wPos, h, 3, true);
+    ctx.fillStyle = d.color;
+    roundRect(rect.x + wPos, rect.y, wAcr, h, 3, true);
+    ctx.fillStyle = sel ? "#0b0d11" : "#fff";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(posTxt, rect.x + wPos / 2, rect.y + h / 2 + 1);
+    ctx.fillStyle = inkOn(d.color);
+    ctx.fillText(acr, rect.x + wPos + wAcr / 2, rect.y + h / 2 + 1);
+    const flagTxt = isQ ? c.st.kind === "out" ? "OUT" : c.st.kind === "in" ? "IN" : "" : inPit(c.num, S.t) ? "PIT" : "";
+    if (flagTxt) {
+      ctx.fillStyle = isQ ? "#a3aab7" : "#f5b400";
+      ctx.font = `700 ${fs * 0.7}px "Titillium Web", system-ui, sans-serif`;
+      ctx.textAlign = "left";
+      ctx.fillText(flagTxt, rect.x + w + 3, rect.y + h / 2 + 1);
+      ctx.font = `700 ${fs}px "Titillium Web", system-ui, sans-serif`;
+    }
+    ctx.globalAlpha = 1;
+    tagRects.push({ ...rect, num: c.num });
+  }
+}
+function roundRect(x, y, w, h, r, fill) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+}
+cv.addEventListener("click", (e) => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const hit = tagRects.find((q) => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+  selectDriver(hit ? hit.num : null);
+});
+function tyreBadge(c, age) {
+  const col = COMP[c] || "#888";
+  return `<span class="tyre" style="border-color:${col}" title="${esc(c)}">${COMP_L[c] || "?"}</span><span class="mono" style="color:var(--text2)">${age != null ? age : ""}</span>`;
+}
+function updateBoard() {
+  var _a, _b, _c, _d;
+  if (S.kind === "quali") return updateBoardQ();
+  const t = S.t, ord = order(t);
+  const ll = leaderLap(t), st = trackStatus(t);
+  $("#lapbox").innerHTML = S.session ? `<div class="lap">GIRO ${ll || "–"}<small> / ${S.totalLaps || "?"}</small></div><span class="tstatus ts-${st}">${TS_LABEL[st]}</span>` : "";
+  const msgs = S.rc.filter((m) => m.t <= t).slice(-3).reverse();
+  $("#rcbox").innerHTML = msgs.map((m) => `<div>${m.lap ? "G" + m.lap + " · " : ""}${esc(m.msg)}</div>`).join("");
+  const w = S.wx.length ? S.wx[Math.max(0, bs(S.wx, t))] : null;
+  $("#wx").innerHTML = w ? `<span>Aria ${(_b = (_a = w.air) == null ? void 0 : _a.toFixed) == null ? void 0 : _b.call(_a, 0)}°</span><span>Pista ${(_d = (_c = w.track) == null ? void 0 : _c.toFixed) == null ? void 0 : _d.call(_c, 0)}°</span><span>${w.rain ? "🌧 Pioggia" : "Asciutto"}</span>` : "";
+  let html = "";
+  ord.forEach((num, i) => {
+    const d = S.drivers[num], iv = intAt(num, t);
+    let g = "";
+    if (i === 0) g = "Leader";
+    else if (iv) {
+      const v = S.gapMode === "int" ? iv.int : iv.gap;
+      g = typeof v === "number" ? "+" + v.toFixed(S.gapMode === "int" ? 3 : 1) : v || "";
+    }
+    const lapNow = lapsDone(num, t) + 1, stn = stintAt(num, lapNow);
+    const age = stn ? stn.age0 + (lapNow - stn.a) : null;
+    const pits = pitsBefore(num, t).length, last = lastLap(num, t);
+    const seen = S.loc[num] && S.loc[num].length ? carXY(num, t) : true;
+    const pit = inPit(num, t) ? '<span class="badge pitnow">PIT</span>' : "";
+    html += `<div tabindex="0" class="row${S.selected === num ? " sel" : ""}${!seen && t > S.t0 + 12e4 ? " dim" : ""}" data-n="${num}">
+      <span class="p mono">${i + 1}</span><span class="bar" style="background:${d.color}"></span>
+      <span class="nm"><b>${esc(d.acr)}</b><span>${esc(d.team)}</span>${pit}</span>
+      <span class="g mono">${esc(g)}</span>
+      <span class="ty">${stn ? tyreBadge(stn.c, age) : ""}</span>
+      <span class="pit mono" title="Pit stop effettuati">${pits}</span>
+      <span class="ll mono">${(last == null ? void 0 : last.dur) ? fmtLap(last.dur) : "—"}</span></div>`;
+  });
+  keepFocus(() => {
+    $("#board").innerHTML = ord.length ? `<div class="row" style="cursor:default;color:var(--muted);font-size:.8em"><span></span><span></span><span>Pilota</span><span class="g">${S.gapMode === "int" ? "Distacco" : "Leader"}</span><span>Gomma</span><span class="pit">Pit</span><span class="ll">Ult. giro</span></div>` + html : "";
+  });
+}
+$("#board").addEventListener("click", (e) => {
+  const r = e.target.closest(".row[data-n]");
+  if (r) selectDriver(+r.dataset.n);
+});
+function selectDriver(n) {
+  S.selected = n === S.selected ? null : n;
+  S.anaSig = "";
+}
+const tip = $("#tip");
+const isPhone = () => matchMedia("(max-width: 820px), (max-height: 520px)").matches;
+const anaH = (el) => isPhone() ? 340 : el.clientHeight;
+const tvK = () => document.body.classList.contains("tv") ? 1.4 : 1;
+function showTip(e, html) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight) y = e.clientY - r.height - 14;
+  tip.style.left = x + "px";
+  tip.style.top = y + "px";
+}
+function hideTip() {
+  tip.style.display = "none";
+}
+function anaSignature() {
+  const t = S.t;
+  let s = 0, p = 0;
+  for (const n of Object.keys(S.drivers)) {
+    s += lapsDone(n, t);
+    p += pitsBefore(n, t).length;
+  }
+  const body = $("#anabody");
+  return [S.tab, S.kind, S.phases.length, S.deleted.size, S.selected, s, p, [...S.paceSel].join(","), body.clientWidth, anaH(body), S.totalLaps].join("|");
+}
+function updateAnalytics(force) {
+  if (!S.session || !S.ready) return;
+  const sig = anaSignature();
+  if (!force && sig === S.anaSig) return;
+  S.anaSig = sig;
+  const el = $("#anabody");
+  hideTip();
+  keepFocus(() => ({ pace: renderPace, tyres: renderTyres, speed: renderSpeed, proj: renderProj, qtable: renderQTable, qsect: renderQSect, qevo: renderQEvo, qtyres: renderQTyres })[S.tab](el));
+}
+function renderPace(el) {
+  const t = S.t, ord = order(t);
+  let sel = [...S.paceSel].filter((n) => S.drivers[n]);
+  if (!sel.length) {
+    sel = ord.slice(0, 4);
+    if (S.selected && !sel.includes(S.selected)) sel.push(S.selected);
+  }
+  const series = sel.map((n) => ({ n, d: S.drivers[n], pts: driverStats(n, t).clean.map((l) => ({ x: l.n, y: l.dur })) })).filter((s) => s.pts.length);
+  const chips = ord.map((n) => {
+    const d = S.drivers[n], on = sel.includes(n);
+    return `<button class="chip${on ? " on" : ""}" data-pace="${n}"><i style="background:${d.color};${d.dash ? "background:repeating-linear-gradient(90deg," + d.color + " 0 3px,transparent 3px 5px)" : ""}"></i>${esc(d.acr)}</button>`;
+  }).join("");
+  if (!series.length) {
+    el.innerHTML = `<div class="chips">${chips}</div><div class="empty">Servono un paio di giri completati per tracciare il passo.</div>`;
+    bindChips(el);
+    return;
+  }
+  const W = el.clientWidth - 24, H = Math.max(140, anaH(el) - 60), m = { l: Math.round(58 * tvK()), r: Math.round(44 * tvK()), t: 10, b: 26 };
+  const xs = series.flatMap((s) => s.pts.map((p) => p.x)), ys = series.flatMap((s) => s.pts.map((p) => p.y));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs, x0 + 1);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const yp = (y1 - y0) * 0.1 || 0.5;
+  y0 -= yp;
+  y1 += yp;
+  const X = (x) => m.l + (x - x0) / (x1 - x0) * (W - m.l - m.r), Y = (y) => m.t + (y1 - y) / (y1 - y0) * (H - m.t - m.b);
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4;
+    g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#232834"/><text x="${m.l - 8}" y="${Y(v) + 4}" fill="#8b93a1" font-size="11" text-anchor="end">${fmtLap(v)}</text>`;
+  }
+  const step = Math.max(1, Math.ceil((x1 - x0) / 12));
+  for (let x = Math.ceil(x0); x <= x1; x += step) g += `<text x="${X(x)}" y="${H - 8}" fill="#8b93a1" font-size="11" text-anchor="middle">${x}</text>`;
+  g += `<text x="${W - m.r}" y="${H - 8}" fill="#6c7483" font-size="11" text-anchor="end" dx="40">giro</text>`;
+  const labels = [];
+  for (const s of series) {
+    const path = s.pts.map((p, i) => {
+      const prev = s.pts[i - 1];
+      return (i === 0 || p.x - prev.x > 1 ? "M" : "L") + X(p.x).toFixed(1) + "," + Y(p.y).toFixed(1);
+    }).join("");
+    g += `<path d="${path}" fill="none" stroke="${s.d.color}" stroke-width="2" ${s.d.dash ? 'stroke-dasharray="5 3"' : ""} stroke-linejoin="round"/>`;
+    const lp = s.pts[s.pts.length - 1];
+    labels.push({ y: Y(lp.y), x: X(lp.x), s });
+  }
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 13) labels[i].y = labels[i - 1].y + 13;
+  for (const L of labels) g += `<circle cx="${L.x}" cy="${L.s.pts.length ? Y(L.s.pts[L.s.pts.length - 1].y) : L.y}" r="3.5" fill="${L.s.d.color}" stroke="#151820" stroke-width="2"/><text x="${L.x + 7}" y="${L.y + 4}" fill="#eceef2" font-size="11" font-weight="700">${esc(L.s.d.acr)}</text>`;
+  el.innerHTML = `<div class="chips">${chips}</div><svg width="${W}" height="${H}" style="display:block">${g}<line id="xh" y1="${m.t}" y2="${H - m.b}" stroke="#8b93a1" stroke-width="1" style="display:none"/><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent" id="hov"/></svg>`;
+  bindChips(el);
+  const hov = el.querySelector("#hov"), xh = el.querySelector("#xh");
+  const hovFn = (e) => {
+    const r = hov.getBoundingClientRect();
+    const lap = Math.round(x0 + (e.clientX - r.left) / r.width * (x1 - x0));
+    xh.setAttribute("x1", X(lap));
+    xh.setAttribute("x2", X(lap));
+    xh.style.display = "";
+    const rows = series.map((s) => ({ s, p: s.pts.find((p) => p.x === lap) })).filter((o) => o.p).sort((a, b) => a.p.y - b.p.y);
+    showTip(e, `<b>Giro ${lap}</b>` + (rows.length ? rows.map((o) => `<div class="r"><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${o.s.d.color};margin-right:5px"></i>${esc(o.s.d.acr)}</span><span class="mono">${fmtLap(o.p.y)}</span></div>`).join("") : '<div style="color:#8b93a1">giro non pulito (pit/SC)</div>'));
+  };
+  hov.addEventListener("pointermove", hovFn);
+  hov.addEventListener("pointerdown", hovFn);
+  hov.addEventListener("pointerleave", () => {
+    xh.style.display = "none";
+    hideTip();
+  });
+}
+function bindChips(el) {
+  el.querySelectorAll("[data-pace]").forEach((b) => b.onclick = () => {
+    const n = +b.dataset.pace;
+    if (!S.paceSel.size) {
+      const t = S.t;
+      order(t).slice(0, 4).forEach((x) => S.paceSel.add(x));
+      if (S.selected) S.paceSel.add(S.selected);
+    }
+    S.paceSel.has(n) ? S.paceSel.delete(n) : S.paceSel.add(n);
+    if (!S.paceSel.size) S.paceSel = /* @__PURE__ */ new Set();
+    updateAnalytics(true);
+  });
+}
+function renderTyres(el) {
+  const t = S.t, ord = order(t), total = S.totalLaps || Math.max(1, leaderLap(t));
+  const W = el.clientWidth - 24, rowH = Math.max(15, Math.min(26, (anaH(el) - 40) / Math.max(1, ord.length))), m = { l: Math.round(46 * tvK()), r: isPhone() ? 96 : Math.round(120 * tvK()), t: 18 };
+  const H = m.t + rowH * ord.length + 6;
+  const X = (l) => m.l + l / total * (W - m.l - m.r);
+  let g = "";
+  for (let l = 0; l <= total; l += 10) g += `<line x1="${X(l)}" x2="${X(l)}" y1="${m.t - 4}" y2="${H}" stroke="#232834"/><text x="${X(l)}" y="11" fill="#8b93a1" font-size="11" text-anchor="middle">${l}</text>`;
+  g += `<text x="${W - m.r + 8}" y="11" fill="#8b93a1" font-size="11">${isPhone() ? "degrado" : "degrado stint attuale"}</text>`;
+  const ll = leaderLap(t);
+  g += `<line x1="${X(ll)}" x2="${X(ll)}" y1="${m.t - 4}" y2="${H}" stroke="#e10600" stroke-width="1.5"/>`;
+  ord.forEach((num, i) => {
+    var _a, _b;
+    const d = S.drivers[num], y = m.t + i * rowH, lapNow = lapsDone(num, t) + 1, ds = driverStats(num, t);
+    g += `<text x="${m.l - 8}" y="${y + rowH / 2 + 4}" fill="${S.selected === num ? "#fff" : "#c9ced8"}" font-size="11" font-weight="700" text-anchor="end">${esc(d.acr)}</text><rect x="4" y="${y + 3}" width="3" height="${rowH - 6}" fill="${d.color}"/>`;
+    for (const s of S.stints[num] || []) {
+      if (s.a > lapNow) continue;
+      const a = s.a - 1, b = Math.min((_a = s.b) != null ? _a : lapNow, lapNow);
+      if (b <= a) continue;
+      const x = X(a) + 1, w = Math.max(2, X(b) - X(a) - 2), col = COMP[s.c] || "#777";
+      g += `<rect x="${x}" y="${y + 3}" width="${w}" height="${rowH - 6}" rx="3" fill="${col}" data-tt="${esc(d.acr)}|${s.c}|${s.a}|${b}|${s.age0}"/>`;
+      if (w > 16) g += `<text x="${x + w / 2}" y="${y + rowH / 2 + 4}" fill="${s.c === "SOFT" || s.c === "WET" || s.c === "INTERMEDIATE" ? "#fff" : "#111"}" font-size="10" font-weight="700" text-anchor="middle" pointer-events="none">${COMP_L[s.c] || "?"}</text>`;
+    }
+    if (ds.deg != null) g += `<text x="${W - m.r + 8}" y="${y + rowH / 2 + 4}" fill="#c9ced8" font-size="11" class="mono">${ds.deg >= 0 ? "+" : ""}${ds.deg.toFixed(isPhone() ? 2 : 3)} s/g${isPhone() ? "" : "iro · " + ((_b = ds.age) != null ? _b : "") + " giri"}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" style="display:block">${g}</svg><div class="note">Colori mescole: <b style="color:var(--soft)">S</b> soft · <b style="color:var(--medium)">M</b> medium · <b style="color:var(--hard)">H</b> hard · <b style="color:var(--inter)">I</b> intermedie · <b style="color:var(--wet)">W</b> wet. Degrado = peggioramento del tempo per giro di età gomma, corretto per il carburante (~${FUEL_EFFECT} s/giro). Linea rossa = giro del leader.</div>`;
+  el.querySelectorAll("[data-tt]").forEach((r) => {
+    r.addEventListener("pointermove", (e) => {
+      const [a, c, s, b, age] = r.dataset.tt.split("|");
+      showTip(e, `<b>${a}</b> · ${c}<div>Giri ${s}–${b} (${b - s + 1})</div><div>Gomma ${+age ? "usata (" + age + " giri)" : "nuova"}</div>`);
+    });
+    r.addEventListener("pointerleave", hideTip);
+  });
+}
+function renderSpeed(el) {
+  const t = S.t, ord = ordNums(t);
+  const rows = ord.map((n) => {
+    const done = (S.laps[n] || []).filter((l) => l.end && l.end <= t);
+    const mx = (k) => {
+      const v = done.map((l) => l[k]).filter((v2) => v2 > 0);
+      return v.length ? Math.max(...v) : null;
+    };
+    const best = S.kind === "quali" ? qBestAny(n, t) : done.filter((l) => l.dur > 0 && l.n > 1).reduce((a, l) => !a || l.dur < a.dur ? l : a, null);
+    return { n, d: S.drivers[n], st: mx("st"), i1: mx("i1"), i2: mx("i2"), best: best == null ? void 0 : best.dur };
+  }).filter((r) => r.st).sort((a, b) => b.st - a.st);
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty">Nessun dato di velocità ancora disponibile.</div>';
+    return;
+  }
+  const W = el.clientWidth - 24, rowH = Math.max(16, Math.min(24, (anaH(el) - 40) / rows.length)), narrow = W < 620, m = { l: Math.round(48 * tvK()), r: narrow ? 118 : Math.round(250 * tvK()), t: 20 };
+  const H = m.t + rows.length * rowH + 4;
+  const v0 = Math.floor(Math.min(...rows.map((r) => r.st)) - 3), v1 = Math.ceil(Math.max(...rows.map((r) => r.st)) + 1);
+  const X = (v) => m.l + (v - v0) / (v1 - v0) * (W - m.l - m.r);
+  const bestLap = Math.min(...rows.map((r) => r.best || 1e9));
+  let g = "";
+  for (let v = Math.ceil(v0 / 5) * 5; v <= v1; v += 5) g += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t - 4}" y2="${H}" stroke="#232834"/><text x="${X(v)}" y="12" fill="#8b93a1" font-size="11" text-anchor="middle">${v}</text>`;
+  g += `<text x="${m.l}" y="12" fill="#6c7483" font-size="11" text-anchor="end" dx="-6">km/h</text>`;
+  const cx = W - m.r + 14;
+  const k_ = tvK(), cB = narrow ? cx + 40 : cx + 164 * k_;
+  g += `<text x="${cx}" y="12" fill="#8b93a1" font-size="11">${narrow ? "Trap" : "Speed trap"}</text>${narrow ? "" : `<text x="${cx + 74 * k_}" y="12" fill="#8b93a1" font-size="11">I1</text><text x="${cx + 120 * k_}" y="12" fill="#8b93a1" font-size="11">I2</text>`}<text x="${cB}" y="12" fill="#8b93a1" font-size="11">${narrow ? "Best" : "Giro migliore"}</text>`;
+  rows.forEach((r, i) => {
+    var _a, _b;
+    const y = m.t + i * rowH + rowH / 2;
+    g += `<text x="${m.l - 10}" y="${y + 4}" fill="#c9ced8" font-size="11" font-weight="700" text-anchor="end">${esc(r.d.acr)}</text>`;
+    g += `<line x1="${m.l}" x2="${X(r.st)}" y1="${y}" y2="${y}" stroke="#2c3240" stroke-width="2"/><circle cx="${X(r.st)}" cy="${y}" r="5" fill="${r.d.color}" stroke="#151820" stroke-width="2" data-sp="${i}"/>`;
+    g += `<text x="${cx}" y="${y + 4}" fill="#eceef2" font-size="11" class="mono">${r.st}</text>${narrow ? "" : `<text x="${cx + 74 * k_}" y="${y + 4}" fill="#a3aab7" font-size="11">${(_a = r.i1) != null ? _a : "—"}</text><text x="${cx + 120 * k_}" y="${y + 4}" fill="#a3aab7" font-size="11">${(_b = r.i2) != null ? _b : "—"}</text>`}`;
+    g += `<text x="${cB}" y="${y + 4}" fill="${r.best === bestLap ? "#d59cff" : "#a3aab7"}" font-size="11" font-weight="${r.best === bestLap ? 700 : 400}">${r.best ? fmtLap(r.best) : "—"}${r.best === bestLap ? " ★" : ""}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" style="display:block">${g}</svg><div class="note">Velocità massime registrate finora alla speed trap e agli intermedi. ★ = giro più veloce della sessione fin qui.</div>`;
+  el.querySelectorAll("[data-sp]").forEach((c) => {
+    const r = rows[+c.dataset.sp];
+    c.addEventListener("pointermove", (e) => {
+      var _a, _b;
+      return showTip(e, `<b>${esc(r.d.name || r.d.acr)}</b><div>Speed trap ${r.st} km/h</div><div>I1 ${(_a = r.i1) != null ? _a : "—"} · I2 ${(_b = r.i2) != null ? _b : "—"}</div>`);
+    });
+    c.addEventListener("pointerleave", hideTip);
+  });
+}
+function renderProj(el) {
+  const t = S.t, pr = project(t);
+  if (!pr || pr.leadDone < 4) {
+    el.innerHTML = '<div class="empty">Le previsioni partono dopo i primi giri (servono tempi puliti).</div>';
+    return;
+  }
+  const trs = pr.rows.map((r) => {
+    if (r.total == null) return `<tr><td class="n">—</td><td><b>${esc(r.d.acr)}</b></td><td class="n">${r.cur}</td><td colspan="5" style="color:var(--muted)">dati insufficienti</td></tr>`;
+    const delta = r.cur - r.proj;
+    const dl = delta > 0 ? `<span class="up">▲${delta}</span>` : delta < 0 ? `<span class="dn">▼${-delta}</span>` : '<span style="color:var(--muted)">=</span>';
+    const st = r.ds.st;
+    return `<tr${S.selected === r.num ? ' style="background:#232a3a"' : ""}><td class="n mono"><b>${r.proj}</b></td><td><span style="display:inline-block;width:3px;height:1em;background:${r.d.color};margin-right:6px;vertical-align:-2px"></span><b>${esc(r.d.acr)}</b></td>
+      <td class="n mono">${r.cur} ${dl}</td><td class="n mono">${fmtLap(r.ds.pace)}</td><td class="n mono">${r.ds.deg != null ? (r.ds.deg >= 0 ? "+" : "") + r.ds.deg.toFixed(2) : "—"}</td>
+      <td>${st ? tyreBadge(st.c, r.ds.age) : ""}</td><td>${r.stops ? `pit ~G${r.pitLap}${r.ruleStop ? ' <span title="Deve ancora usare la seconda mescola" style="color:var(--muted)">(regola)</span>' : ""}` : '<span style="color:var(--muted)">no</span>'}</td>
+      <td class="n mono">${r.proj === 1 ? "—" : "+" + r.finGap.toFixed(1)}</td></tr>`;
+  }).join("");
+  const ord = order(t);
+  const bat = [];
+  for (let i = 1; i < ord.length; i++) {
+    const b = ord[i], a = ord[i - 1], iv = intAt(b, t);
+    if (!iv || typeof iv.int !== "number" || iv.int > 3) continue;
+    const sa = driverStats(a, t), sb = driverStats(b, t);
+    if (!sa.pace || !sb.pace) continue;
+    const rate = sa.pace - sb.pace;
+    const da = S.drivers[a], db = S.drivers[b];
+    let txt;
+    if (iv.int <= 1) txt = rate > 0.05 ? `già entro 1 s e più veloce di ${rate.toFixed(2)} s/giro: sorpasso possibile` : `entro 1 s ma senza vantaggio di passo`;
+    else if (rate > 0.05) txt = `recupera ${rate.toFixed(2)} s/giro → entro 1 s tra ~${Math.ceil((iv.int - 1) / rate)} giri`;
+    else if (rate < -0.05) txt = `perde ${(-rate).toFixed(2)} s/giro, il distacco cresce`;
+    else txt = "ritmo simile, distacco stabile";
+    const ta = sa.st ? `${COMP_L[sa.st.c] || "?"}${sa.age}` : "", tb = sb.st ? `${COMP_L[sb.st.c] || "?"}${sb.age}` : "";
+    bat.push(`<div class="battle"><b>P${i + 1} ${esc(db.acr)}</b> su <b>${esc(da.acr)}</b> <span class="mono">(${iv.int.toFixed(2)} s)</span><div style="color:var(--text2)">${txt} · gomme ${tb} vs ${ta}</div></div>`);
+  }
+  el.innerHTML = `<div class="cols"><div class="tblwrap"><table class="pt"><thead><tr><th>Prev.</th><th>Pilota</th><th>Ora</th><th>Passo</th><th>Degr.</th><th>Gomma</th><th>Sosta</th><th>Arrivo</th></tr></thead><tbody>${trs}</tbody></table></div>
+   <div><div style="font-weight:600;margin-bottom:4px">Duelli in pista</div>${bat.join("") || '<div class="note">Nessun pilota entro 3 s da chi lo precede.</div>'}
+   <div class="note">Mancano ${pr.left} giri · perdita stimata per un pit stop ${pr.loss.toFixed(1)} s. Modello: passo mediano degli ultimi giri puliti + degrado gomma lineare + soste obbligatorie (2 mescole) o gomme a fine vita. Non considera safety car, meteo o ordini di scuderia: è una stima, non un pronostico.</div></div></div>`;
+}
+const SESS_IT = { "Race": "Gara", "Sprint": "Sprint", "Qualifying": "Qualifiche", "Sprint Qualifying": "Qualifiche Sprint", "Sprint Shootout": "Sprint Shootout", "Practice 1": "Prove libere 1", "Practice 2": "Prove libere 2", "Practice 3": "Prove libere 3" };
+const sessLabel = (s) => SESS_IT[s.session_name] || s.session_name || "";
+function kindOf(s) {
+  const ty = (s.session_type || "").toLowerCase(), nm = (s.session_name || "").toLowerCase();
+  if (ty === "race") return "race";
+  if (ty) return "quali";
+  return /^(race|sprint)$/.test(nm) ? "race" : "quali";
+}
+const isPhased = (s) => /qualifying|shootout/i.test((s.session_type || "") + " " + (s.session_name || ""));
+function tabOk(t) {
+  const b = document.querySelector('#tabs button[data-t="' + t + '"]');
+  return !!b && b.style.display !== "none";
+}
+function applyKindUI() {
+  const q = S.kind === "quali";
+  document.querySelectorAll("#tabs button[data-k]").forEach((b) => {
+    b.style.display = b.dataset.k === "q" === q ? "" : "none";
+  });
+  $("#bTitle").textContent = q ? S.phased ? "QUALIFICHE" : "TEMPI" : "CLASSIFICA";
+  const gs = document.querySelectorAll("#gapSeg button");
+  gs[0].textContent = q ? "Dal precedente" : "Distacco";
+  gs[1].textContent = q ? "Dal P1" : "Dal leader";
+  $("#lapsLbl").style.display = q ? "none" : "";
+  setTab(pref("tab_" + S.kind) || (q ? "qtable" : "pace"));
+  updatePhaseBtns();
+}
+function computePhases() {
+  S.phases = [];
+  S.qref = null;
+  const all = [];
+  for (const a of Object.values(S.laps)) for (const l of a) {
+    l.ph = null;
+    if (l.t) all.push(l);
+  }
+  if (!all.length) return;
+  const durs = all.filter((l) => l.dur > 0 && !l.pitOut).map((l) => l.dur);
+  S.qref = durs.length ? Math.min(...durs) : null;
+  if (!S.phased) {
+    all.forEach((l) => l.ph = 1);
+    S.phases = [{ no: 1, label: "Sessione", a: -Infinity, b: Infinity, t0: Math.min(...all.map((l) => l.t)) }];
+    return;
+  }
+  const ends = [];
+  for (const m of S.rc) {
+    if (m.flag === "CHEQUERED" && m.scope !== "Driver" && (!ends.length || m.t - ends[ends.length - 1] > 24e4)) ends.push(m.t);
+  }
+  let cuts, skip2;
+  if (ends.length) {
+    cuts = ends.slice(0, 3);
+    skip2 = 24e4;
+  } else {
+    const st = all.map((l) => l.t).sort((a, b) => a - b), gaps = [];
+    for (let i = 1; i < st.length; i++) if (st[i] - st[i - 1] >= 3e5) gaps.push({ g: st[i] - st[i - 1], at: st[i - 1] });
+    gaps.sort((a, b) => b.g - a.g);
+    cuts = gaps.slice(0, 2).map((x) => x.at + 1e3).sort((a, b) => a - b);
+    skip2 = 0;
+  }
+  const pre = S.sprintQ ? "SQ" : "Q";
+  let no = 0;
+  for (let k = 0; k <= cuts.length; k++) {
+    if (k === cuts.length && cuts.length >= 3) continue;
+    const a = k ? cuts[k - 1] + skip2 : -Infinity, b = k < cuts.length ? cuts[k] : Infinity;
+    const ls = all.filter((l) => l.t > a && l.t <= b);
+    if (!ls.length) continue;
+    no++;
+    ls.forEach((l) => l.ph = no);
+    S.phases.push({ no, label: pre + no, a, b, t0: Math.min(...ls.map((l) => l.t)) });
+  }
+}
+function curPhaseNo(t) {
+  let r = null;
+  for (const p of S.phases) if (t >= p.t0 - 9e4) r = p.no;
+  return r;
+}
+function qValid(n, l, t) {
+  return l.ph != null && l.end && l.end <= t && l.dur > 0 && !l.pitOut && !S.deleted.has(n + "|" + l.n) && (!S.qref || l.dur <= S.qref * 1.13);
+}
+function qBest(n, no, t) {
+  let b = null;
+  for (const l of S.laps[n] || []) {
+    if (l.ph !== no || !qValid(n, l, t)) continue;
+    if (!b || l.dur < b.dur) b = l;
+  }
+  return b;
+}
+function qBestAny(n, t) {
+  let b = null;
+  for (const l of S.laps[n] || []) {
+    if (!qValid(n, l, t)) continue;
+    if (!b || l.dur < b.dur) b = l;
+  }
+  return b;
+}
+function qStatus(n, t) {
+  var _a;
+  const a = S.laps[n] || [];
+  for (let i = 0; i < a.length; i++) {
+    const l = a[i];
+    if (!l.t) continue;
+    if (t < l.t) break;
+    if (t < ((_a = l.end) != null ? _a : Infinity)) {
+      let kind;
+      if (l.pitOut) kind = "out";
+      else if (l.dur > 0) kind = S.qref && l.dur <= S.qref * 1.13 ? "push" : "in";
+      else kind = a[i - 1] && a[i - 1].pitOut ? "push" : "in";
+      return { lap: l, kind };
+    }
+  }
+  return null;
+}
+function qClass(t) {
+  const nums = Object.keys(S.drivers).map(Number).sort((a, b) => a - b), N = nums.length;
+  const np = curPhaseNo(t) || 1;
+  const bests = {};
+  for (const n of nums) bests[n] = [1, 2, 3].map((no) => qBest(n, no, t));
+  const n2 = S.phased ? Math.min(N, 10 + Math.ceil(Math.max(0, N - 10) / 2)) : N, n3 = S.phased ? Math.min(N, 10) : N;
+  const sortBy = (list, no, prev) => [...list].sort((a, b) => {
+    const x = bests[a][no - 1], y = bests[b][no - 1];
+    if (x && y && x.dur !== y.dur) return x.dur - y.dur;
+    if (x && !y) return -1;
+    if (!x && y) return 1;
+    return prev.indexOf(a) - prev.indexOf(b);
+  });
+  const o1 = sortBy(nums, 1, nums);
+  let order2 = o1, cutPos = S.phased ? n2 : null;
+  const elim = {};
+  if (S.phased && np >= 2) {
+    const s2 = o1.slice(0, n2), e1 = o1.slice(n2);
+    e1.forEach((n) => elim[n] = 1);
+    const o2 = sortBy(s2, 2, o1);
+    order2 = [...o2, ...e1];
+    cutPos = n3;
+    if (np >= 3) {
+      const s3 = o2.slice(0, n3), e2 = o2.slice(n3);
+      e2.forEach((n) => elim[n] = 2);
+      const o3 = sortBy(s3, 3, o2);
+      order2 = [...o3, ...e2, ...e1];
+      cutPos = null;
+    }
+  }
+  const lead = [1, 2, 3].map((no) => {
+    let m = null;
+    for (const n of nums) {
+      const b = bests[n][no - 1];
+      if (b && (m == null || b.dur < m)) m = b.dur;
+    }
+    return m;
+  });
+  return { order: order2, np, cutPos, elim, bests, lead, n2, n3 };
+}
+function qShown(c, n) {
+  const no = c.elim[n] || c.np;
+  const b = c.bests[n][no - 1];
+  return b ? { dur: b.dur, no, lap: b } : null;
+}
+const ordNums = (t) => S.kind === "quali" ? qClass(t).order : order(t);
+function qSkipBreak() {
+  for (let k = 0; k < S.phases.length - 1; k++) {
+    const p = S.phases[k], nx = S.phases[k + 1];
+    if (p.b === Infinity) continue;
+    const a = p.b + 17e4, b = nx.t0 - 45e3;
+    if (S.t > a && S.t < b) {
+      S.t = b;
+      S.anaSig = "";
+      break;
+    }
+  }
+}
+function updatePhaseBtns() {
+  const box = $("#phbtns");
+  if (!box) return;
+  const show = S.kind === "quali" && S.phased && S.mode === "replay" && S.phases.length > 0;
+  box.style.display = show ? "inline-flex" : "none";
+  box.querySelectorAll("button").forEach((b) => {
+    const p = S.phases.find((x) => x.no === +b.dataset.ph);
+    b.style.display = p ? "" : "none";
+    if (p) b.textContent = p.label;
+  });
+}
+document.querySelectorAll("#phbtns button").forEach((b) => b.onclick = () => {
+  const p = S.phases.find((x) => x.no === +b.dataset.ph);
+  if (p) {
+    S.t = Math.max(S.tStart, p.t0 - 3e4);
+    S.anaSig = "";
+  }
+});
+function updateBoardQ() {
+  var _a, _b, _c, _d;
+  const t = S.t, c = qClass(t), np = c.np, ph = S.phases.find((p) => p.no === np);
+  let chip = "";
+  if (ph) {
+    const nx = S.phases.find((p) => p.no === np + 1), ended = ph.b !== Infinity && t > ph.b;
+    const st = trackStatus(t, true);
+    chip = ended && (!nx || t < nx.t0 - 9e4) ? `<span class="tstatus ts-FINISH">FINE ${ph.label}</span>` : `<span class="tstatus ts-${st}">${TS_LABEL[st]}</span>`;
+  }
+  $("#lapbox").innerHTML = S.session ? `<div class="lap">${ph ? ph.label : "–"}<small>${ph ? " · " + fmtClock(Math.max(0, t - ph.t0)) : ""}</small></div>${chip}` : "";
+  const msgs = S.rc.filter((m) => m.t <= t).slice(-3).reverse();
+  $("#rcbox").innerHTML = msgs.map((m) => `<div>${esc(m.msg)}</div>`).join("");
+  const w = S.wx.length ? S.wx[Math.max(0, bs(S.wx, t))] : null;
+  $("#wx").innerHTML = w ? `<span>Aria ${(_b = (_a = w.air) == null ? void 0 : _a.toFixed) == null ? void 0 : _b.call(_a, 0)}°</span><span>Pista ${(_d = (_c = w.track) == null ? void 0 : _c.toFixed) == null ? void 0 : _d.call(_c, 0)}°</span><span>${w.rain ? "🌧 Pioggia" : "Asciutto"}</span>` : "";
+  let html = "";
+  c.order.forEach((num, i) => {
+    var _a2;
+    const d = S.drivers[num], el = c.elim[num], sh = qShown(c, num), st = qStatus(num, t);
+    let gap = "", tm = "—";
+    if (sh) {
+      tm = fmtLap(sh.dur);
+      let ref = null;
+      if (S.gapMode === "lead") ref = c.lead[sh.no - 1];
+      else for (let j = i - 1; j >= 0; j--) {
+        const o = qShown(c, c.order[j]);
+        if (o && o.no === sh.no) {
+          ref = o.dur;
+          break;
+        }
+      }
+      gap = ref == null || sh.dur - ref <= 0 ? i === 0 ? "Leader" : "" : "+" + (sh.dur - ref).toFixed(3);
+    }
+    let badge = "";
+    if (el) badge = `<span class="badge elimb">E${el}</span>`;
+    else if (st) badge = st.kind === "push" ? '<span class="badge push">PUSH</span>' : `<span class="badge">${st.kind === "out" ? "OUT" : "IN"}</span>`;
+    else if (ph && t >= ph.t0) badge = '<span class="badge box">BOX</span>';
+    const lapN = st ? st.lap.n : (((_a2 = lastLap(num, t)) == null ? void 0 : _a2.n) || 0) + 1, stn = stintAt(num, lapN) || stintAt(num, 1);
+    const age = stn ? stn.age0 + Math.max(0, lapN - stn.a) : null;
+    const cls = ["row", "q"];
+    if (S.selected === num) cls.push("sel");
+    if (el) cls.push("out");
+    if (c.cutPos != null && i >= c.cutPos && !el) cls.push("elim");
+    if (c.cutPos != null && i === c.cutPos) cls.push("cutrow");
+    html += `<div tabindex="0" class="${cls.join(" ")}" data-n="${num}">
+      <span class="p mono">${i + 1}</span><span class="bar" style="background:${d.color}"></span>
+      <span class="nm"><b>${esc(d.acr)}</b><span>${esc(d.team)}</span>${badge}</span>
+      <span class="g mono">${esc(gap)}</span>
+      <span class="ty">${stn ? tyreBadge(stn.c, age) : ""}</span>
+      <span class="pit mono" title="Giri completati">${lapsDone(num, t)}</span>
+      <span class="ll mono">${esc(tm)}</span></div>`;
+  });
+  keepFocus(() => {
+    $("#board").innerHTML = c.order.length ? `<div class="row q" style="cursor:default;color:var(--muted);font-size:.8em"><span></span><span></span><span>Pilota</span><span class="g">${S.gapMode === "lead" ? "Dal P1" : "Dal prec."}</span><span>Gomma</span><span class="pit">Giri</span><span class="ll">Tempo</span></div>` + html : "";
+  });
+}
+function renderQTable(el) {
+  const t = S.t, c = qClass(t);
+  if (!S.phases.length) {
+    el.innerHTML = '<div class="empty">Ancora nessun giro registrato.</div>';
+    return;
+  }
+  const phs = S.phased ? [1, 2, 3].filter((n) => S.phases.some((p) => p.no === n)) : [1];
+  const hdr = phs.map((n) => `<th class="n">${S.phases.find((p) => p.no === n).label}</th>`).join("");
+  const rows = c.order.map((num, i) => {
+    const d = S.drivers[num], elim = c.elim[num];
+    const cells = phs.map((n) => {
+      if (n > c.np) return '<td class="n mono" style="color:var(--muted)">·</td>';
+      const b = c.bests[num][n - 1];
+      const dl = (S.laps[num] || []).some((l) => l.ph === n && l.end && l.end <= t && S.deleted.has(num + "|" + l.n) && (!b || l.dur < b.dur));
+      const mark = dl ? '<span title="Giro più veloce cancellato (di solito limiti di pista)">⛔</span> ' : "";
+      if (!b) return `<td class="n mono" style="color:var(--muted)">${mark}—</td>`;
+      const st = stintAt(num, b.n), fast = b.dur === c.lead[n - 1];
+      return `<td class="n mono${fast ? " fast" : ""}">${mark}<span class="tt">${st ? `<span class="tyre" style="border-color:${COMP[st.c] || "#888"}">${COMP_L[st.c] || "?"}</span>` : ""}${fmtLap(b.dur)}</span></td>`;
+    }).join("");
+    const sh = qShown(c, num);
+    let gap = "—";
+    if (sh) {
+      const d0 = sh.dur - c.lead[sh.no - 1];
+      gap = d0 === 0 ? "" : "+" + d0.toFixed(3);
+    }
+    const cls = [];
+    if (elim) cls.push("eo");
+    if (S.phased && (i === c.n2 || i === c.n3) && i > 0) cls.push("cut");
+    return `<tr class="${cls.join(" ")}"${S.selected === num ? ' style="background:#232a3a"' : ""}><td class="n mono"><b>${i + 1}</b></td><td><span style="display:inline-block;width:3px;height:1em;background:${d.color};margin-right:6px;vertical-align:-2px"></span><b>${esc(d.acr)}</b> <span style="color:var(--muted)">${esc(d.team)}</span></td>${cells}<td class="n mono">${gap}</td></tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tblwrap"><table class="pt"><thead><tr><th>Pos</th><th>Pilota</th>${hdr}<th class="n">Distacco</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="note">Viola = miglior tempo della fase · ⛔ = giro più veloce cancellato · le righe tratteggiate sono le linee di eliminazione (distacco misurato nella fase in cui il pilota è stato classificato).</div>`;
+}
+function renderQSect(el) {
+  const t = S.t, rows = [], bestS = [1e9, 1e9, 1e9];
+  for (const n of Object.keys(S.drivers).map(Number)) {
+    const best = [null, null, null];
+    let lapBest = null;
+    for (const l of S.laps[n] || []) {
+      if (!qValid(n, l, t)) continue;
+      [l.s1, l.s2, l.s3].forEach((v, k) => {
+        if (v > 0 && (best[k] == null || v < best[k])) best[k] = v;
+      });
+      if (!lapBest || l.dur < lapBest.dur) lapBest = l;
+    }
+    if (!lapBest) continue;
+    best.forEach((v, k) => {
+      if (v != null && v < bestS[k]) bestS[k] = v;
+    });
+    rows.push({ n, d: S.drivers[n], best, ideal: best.every((v) => v != null) ? best[0] + best[1] + best[2] : null, lap: lapBest.dur });
+  }
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty">Servono giri lanciati completati per confrontare i settori.</div>';
+    return;
+  }
+  rows.sort((a, b) => {
+    var _a, _b;
+    return ((_a = a.ideal) != null ? _a : a.lap + 9) - ((_b = b.ideal) != null ? _b : b.lap + 9);
+  });
+  const f = (v) => v == null ? "—" : v.toFixed(3);
+  const trs = rows.map((r, i) => {
+    const sec = r.best.map((v, k) => `<td class="n mono ${v != null && v === bestS[k] ? "sec-best" : ""}">${f(v)}</td>`).join("");
+    const margin = r.ideal != null ? r.lap - r.ideal : null;
+    return `<tr${S.selected === r.n ? ' style="background:#232a3a"' : ""}><td class="n mono"><b>${i + 1}</b></td><td><span style="display:inline-block;width:3px;height:1em;background:${r.d.color};margin-right:6px;vertical-align:-2px"></span><b>${esc(r.d.acr)}</b></td>${sec}<td class="n mono">${r.ideal != null ? fmtLap(r.ideal) : "—"}</td><td class="n mono">${fmtLap(r.lap)}</td><td class="n mono" style="color:${margin != null && margin > 0.05 ? "#ffd84d" : "var(--text2)"}">${margin != null ? margin < 5e-4 ? "0.000" : "+" + margin.toFixed(3) : "—"}</td></tr>`;
+  }).join("");
+  const dream = bestS.every((v) => v < 1e9) ? bestS[0] + bestS[1] + bestS[2] : null;
+  el.innerHTML = `<div class="tblwrap"><table class="pt"><thead><tr><th>#</th><th>Pilota</th><th class="n">S1</th><th class="n">S2</th><th class="n">S3</th><th class="n">Giro ideale</th><th class="n">Miglior giro</th><th class="n">Margine</th></tr></thead><tbody>${trs}</tbody></table></div>
+    <div class="note">Ordinati per giro ideale (somma dei tuoi migliori tre settori). Viola = miglior settore della sessione. Margine = quanto manca al miglior giro per eguagliare l'ideale: più è alto, più il pilota aveva da dare.${dream ? ` Combinando i migliori settori di tutti i piloti: <b>${fmtLap(dream)}</b>.` : ""}</div>`;
+}
+function renderQEvo(el) {
+  const t = S.t, pts = [];
+  for (const n of Object.keys(S.drivers).map(Number)) for (const l of S.laps[n] || []) {
+    if (l.ph == null || !l.end || l.end > t || !(l.dur > 0) || l.pitOut) continue;
+    if (S.qref && l.dur > S.qref * 1.13) continue;
+    const st = stintAt(n, l.n);
+    pts.push({ n, d: S.drivers[n], x: l.end, y: l.dur, c: st ? st.c : "?", ph: l.ph, del: S.deleted.has(n + "|" + l.n), lap: l.n });
+  }
+  if (!pts.length || !S.phases.length) {
+    el.innerHTML = `<div class="empty">Servono giri lanciati completati per mostrare l'evoluzione della pista.</div>`;
+    return;
+  }
+  const wins = [];
+  let off = 0;
+  for (const p of S.phases) {
+    const s = p.t0, e = p.b !== Infinity ? p.b + 16e4 : Math.max(s + 6e4, ...pts.filter((q) => q.ph === p.no).map((q) => q.x));
+    wins.push({ no: p.no, label: p.label, s, e, off });
+    off += e - s;
+  }
+  const total = off;
+  const AX = (x) => {
+    let w = wins.find((w2) => x >= w2.s && x <= w2.e);
+    if (!w) w = wins.reduce((a, w2) => Math.abs(x - w2.s) < Math.abs(x - a.s) ? w2 : a, wins[0]);
+    return w.off + Math.max(0, Math.min(x - w.s, w.e - w.s));
+  };
+  const ds = pts.map((p) => p.y).sort((a, b) => a - b);
+  const y0 = ds[0] - 0.25;
+  let y1 = Math.min(ds[ds.length - 1], ds[Math.floor(ds.length * 0.92)] + 0.3);
+  if (y1 < y0 + 1) y1 = y0 + 1;
+  const W = el.clientWidth - 24, H = Math.max(160, anaH(el) - 56), m = { l: Math.round(58 * tvK()), r: 14, t: 22, b: 24 };
+  const X = (x) => m.l + AX(x) / total * (W - m.l - m.r), Y = (y) => m.t + (y1 - y) / (y1 - y0) * (H - m.t - m.b);
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4;
+    g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#232834"/><text x="${m.l - 8}" y="${Y(v) + 4}" fill="#8b93a1" font-size="11" text-anchor="end">${fmtLap(v)}</text>`;
+  }
+  for (const w of wins) {
+    const xs = m.l + w.off / total * (W - m.l - m.r), xe = m.l + (w.off + w.e - w.s) / total * (W - m.l - m.r);
+    g += `<line x1="${xs}" x2="${xs}" y1="${m.t - 8}" y2="${H - m.b}" stroke="#3a4150"/><text x="${xs + 6}" y="14" fill="#c9ced8" font-size="12" font-weight="700">${w.label}</text>`;
+    for (let mn = 5; mn * 6e4 <= w.e - w.s; mn += 5) {
+      const xx = m.l + (w.off + mn * 6e4) / total * (W - m.l - m.r);
+      if (xx < xe - 14) g += `<text x="${xx}" y="${H - 8}" fill="#6c7483" font-size="10" text-anchor="middle">${mn}′</text>`;
+    }
+  }
+  for (const w of wins) {
+    const ps = pts.filter((p) => p.ph === w.no && !p.del).sort((a, b) => a.x - b.x);
+    if (!ps.length) continue;
+    let cur = ps[0].y, path = `M${X(ps[0].x).toFixed(1)},${Y(cur).toFixed(1)}`;
+    for (let i = 1; i < ps.length; i++) {
+      const xx = X(ps[i].x);
+      path += `H${xx.toFixed(1)}`;
+      if (ps[i].y < cur) {
+        cur = ps[i].y;
+        path += `V${Y(cur).toFixed(1)}`;
+      }
+    }
+    path += `H${(m.l + (w.off + w.e - w.s) / total * (W - m.l - m.r)).toFixed(1)}`;
+    g += `<path d="${path}" fill="none" stroke="#d59cff" stroke-width="2"/>`;
+  }
+  const vis = pts.filter((p) => p.y <= y1);
+  vis.forEach((p, i) => {
+    const sel = S.selected === p.n, dim = S.selected != null && !sel;
+    const col = COMP[p.c] || "#888";
+    g += p.del ? `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="5" fill="none" stroke="#ff5a5a" stroke-width="2" opacity="${dim ? 0.35 : 1}" data-ev="${i}"/>` : `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="${sel ? 6.5 : 4.5}" fill="${col}" stroke="${sel ? "#fff" : "#151820"}" stroke-width="${sel ? 2 : 1.5}" opacity="${dim ? 0.3 : 0.92}" data-ev="${i}"/>`;
+    if (sel) g += `<text x="${X(p.x) + 9}" y="${Y(p.y) + 4}" fill="#eceef2" font-size="11" font-weight="700">${esc(p.d.acr)}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" style="display:block">${g}</svg>
+    <div class="note">Ogni punto è un giro lanciato (colore = mescola: <b style="color:var(--soft)">S</b> <b style="color:var(--medium)">M</b> <b style="color:var(--hard)">H</b>). La linea viola è il miglior tempo della fase: mostra quanto migliora la pista nel corso della sessione. Cerchio rosso = giro cancellato. Le pause tra le fasi sono tolte. Tocca un pilota nella classifica per evidenziarlo.</div>`;
+  el.querySelectorAll("[data-ev]").forEach((c) => {
+    const p = vis[+c.dataset.ev];
+    c.addEventListener("pointermove", (e) => {
+      var _a;
+      return showTip(e, `<b>${esc(p.d.acr)}</b> · ${fmtLap(p.y)}<div>${((_a = S.phases.find((x) => x.no === p.ph)) == null ? void 0 : _a.label) || ""} · giro ${p.lap} · ${p.c}</div>${p.del ? '<div style="color:#ff8a8a">Giro cancellato</div>' : ""}`);
+    });
+    c.addEventListener("pointerleave", hideTip);
+  });
+}
+function renderQTyres(el) {
+  const t = S.t, c = qClass(t);
+  if (!S.phases.length) {
+    el.innerHTML = '<div class="empty">Ancora nessun giro registrato.</div>';
+    return;
+  }
+  const phs = S.phased ? [1, 2, 3].filter((n) => S.phases.some((p) => p.no === n)) : [1];
+  const rows = c.order.map((num, i) => {
+    const d = S.drivers[num], elim = c.elim[num];
+    const cells = phs.map((no) => {
+      if (no > c.np || elim && no > elim) return "<td></td>";
+      const ls = (S.laps[num] || []).filter((l) => l.ph === no && l.end && l.end <= t && l.dur > 0 && !l.pitOut && (!S.qref || l.dur <= S.qref * 1.13));
+      const best = c.bests[num][no - 1];
+      const chips = ls.map((l) => {
+        const st = stintAt(num, l.n), del = S.deleted.has(num + "|" + l.n);
+        return `<span class="att${best && l === best ? " bst" : ""}${del ? " del" : ""}" title="Giro ${l.n}${del ? " · cancellato" : ""}"><span class="tyre" style="border-color:${COMP[st == null ? void 0 : st.c] || "#888"}">${COMP_L[st == null ? void 0 : st.c] || "?"}</span><span class="mono">${fmtLap(l.dur)}</span></span>`;
+      }).join("");
+      return `<td><div class="attempts">${chips || '<span style="color:var(--muted)">nessun tentativo</span>'}</div></td>`;
+    }).join("");
+    return `<tr${S.selected === num ? ' style="background:#232a3a"' : ""}><td class="n mono"><b>${i + 1}</b></td><td style="white-space:nowrap"><span style="display:inline-block;width:3px;height:1em;background:${d.color};margin-right:6px;vertical-align:-2px"></span><b>${esc(d.acr)}</b></td>${cells}</tr>`;
+  }).join("");
+  el.innerHTML = `<div class="tblwrap"><table class="pt"><thead><tr><th>Pos</th><th>Pilota</th>${phs.map((n) => `<th>${S.phases.find((p) => p.no === n).label}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="note">Tutti i tentativi di ogni pilota, con la mescola usata. Bordo viola = miglior tempo del pilota nella fase; barrato = giro cancellato.</div>`;
+}
+function updatePlayBtn() {
+  $("#playBtn").textContent = S.playing ? "❚❚" : "▶";
+}
+function updateControls() {
+  if (!S.session) return;
+  if (S.mode === "replay") {
+    const sc = $("#scrub");
+    if (document.activeElement !== sc) sc.value = Math.round((S.t - S.tStart) / (S.tEnd - S.tStart) * 1e3);
+  }
+  const local = new Date(S.t).toLocaleTimeString("it-IT");
+  if (S.kind === "quali") {
+    const ph = S.phases.find((p) => p.no === curPhaseNo(S.t));
+    $("#clock").textContent = `${ph ? ph.label + " " + fmtClock(Math.max(0, S.t - ph.t0)) : "prima dell'inizio"} · ${local}`;
+  } else $("#clock").textContent = `${fmtClock(S.t - S.t0)} dal via · ${local}`;
+}
+$("#playBtn").onclick = () => {
+  if (S.mode !== "replay") return;
+  S.playing = !S.playing;
+  updatePlayBtn();
+};
+document.querySelectorAll("[data-skip]").forEach((b) => b.onclick = () => skip(+b.dataset.skip));
+function skip(s) {
+  if (S.mode !== "replay" || !S.session) return;
+  S.t = Math.max(S.tStart, Math.min(S.tEnd, S.t + s * 1e3));
+  S.anaSig = "";
+}
+$("#speed").onchange = (e) => S.speed = +e.target.value;
+$("#scrub").oninput = (e) => {
+  if (!S.session) return;
+  S.t = S.tStart + +e.target.value / 1e3 * (S.tEnd - S.tStart);
+  S.anaSig = "";
+};
+$("#delay").oninput = (e) => {
+  S.delay = +e.target.value;
+  $("#delayVal").textContent = S.delay + " s";
+  pref("delay", S.delay);
+};
+document.querySelectorAll("[data-dl]").forEach((b) => b.onclick = () => {
+  S.delay = Math.max(0, Math.min(120, S.delay + +b.dataset.dl));
+  $("#delay").value = S.delay;
+  $("#delayVal").textContent = S.delay + " s";
+  pref("delay", S.delay);
+});
+document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => setTab(b.dataset.t));
+function setTab(t) {
+  if (!tabOk(t)) t = S.kind === "quali" ? "qtable" : "pace";
+  S.tab = t;
+  pref("tab_" + S.kind, t);
+  document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.t === t));
+  updateAnalytics(true);
+}
+document.querySelectorAll("#gapSeg button").forEach((b) => b.onclick = () => {
+  S.gapMode = b.dataset.g;
+  document.querySelectorAll("#gapSeg button").forEach((x) => x.classList.toggle("on", x === b));
+});
+$("#totLaps").onchange = (e) => {
+  S.totalLaps = +e.target.value || null;
+  S.anaSig = "";
+};
+$("#fsBtn").onclick = toggleFs;
+function toggleFs() {
+  var _a, _b;
+  document.fullscreenElement ? document.exitFullscreen() : (_b = (_a = document.documentElement).requestFullscreen) == null ? void 0 : _b.call(_a);
+}
+$("#loadBtn").onclick = async () => {
+  const o = $("#race").selectedOptions[0];
+  if (!(o == null ? void 0 : o._s)) return;
+  try {
+    await loadSession(o._s);
+  } catch (e) {
+    setStatus(e.message, true);
+  }
+};
+document.addEventListener("keydown", (e) => {
+  if (handleRemote(e)) return;
+  if (e.target.matches("input[type=text],input[type=password],input[type=number],select")) return;
+  if (e.code === "Space") {
+    e.preventDefault();
+    $("#playBtn").click();
+  } else if (e.key === "ArrowRight") skip(5);
+  else if (e.key === "ArrowLeft") skip(-5);
+  else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    const sp = $("#speed");
+    sp.selectedIndex = Math.max(0, Math.min(sp.options.length - 1, sp.selectedIndex + (e.key === "ArrowUp" ? 1 : -1)));
+    S.speed = +sp.value;
+    e.preventDefault();
+  } else if ("12345".includes(e.key) && e.key) {
+    const vt = [...document.querySelectorAll("#tabs button[data-t]")].filter((b2) => b2.style.display !== "none");
+    const b = vt[+e.key - 1];
+    if (b) setTab(b.dataset.t);
+  } else if (e.key === "f" || e.key === "F") toggleFs();
+});
+const LIVE_LEAD = 15 * 6e4;
+function segUI() {
+  document.querySelectorAll("#modeSeg button").forEach((x) => x.classList.toggle("on", x.dataset.m === (S.mode === "live" ? "live" : S.pick)));
+}
+document.querySelectorAll("#modeSeg button").forEach((b) => b.onclick = () => {
+  if (b.dataset.m === "live") startLive();
+  else setPick(b.dataset.m);
+});
+function blank() {
+  clearTimeout(S.liveTimer);
+  clearInterval(S.cdTimer);
+  hideCd();
+  S.playing = false;
+  updatePlayBtn();
+  S.session = null;
+  S.ready = false;
+  resetData();
+  $("#board").innerHTML = "";
+  $("#lapbox").innerHTML = "";
+  $("#rcbox").innerHTML = "";
+  $("#title").textContent = "";
+  $("#wx").innerHTML = "";
+  $("#anabody").innerHTML = '<div class="empty">Scegli una sessione e premi <b>Carica</b>.</div>';
+  $("#buffering").style.display = "none";
+  $("#clock").textContent = "";
+  updatePhaseBtns();
+}
+async function setPick(p) {
+  S.pick = p;
+  pref("pick", p);
+  S.kind = p === "quali" ? "quali" : "race";
+  S.phased = p === "quali";
+  applyKindUI();
+  await setMode("replay");
+  if (window.F1DEMO) await window.F1DEMO.autoload();
+}
+async function setMode(m) {
+  S.mode = m;
+  pref("mode", m);
+  blank();
+  segUI();
+  const live = m === "live";
+  $("#replayPick").style.display = live ? "none" : "";
+  $("#scrub").style.display = live ? "none" : "";
+  $("#delaywrap").style.display = live ? "inline-flex" : "none";
+  document.querySelectorAll("[data-skip],#playBtn,#speed").forEach((x) => x.style.display = live ? "none" : "");
+  updatePhaseBtns();
+  if (live) await liveEntry();
+  else await loadYear(+$("#year").value || (/* @__PURE__ */ new Date()).getUTCFullYear());
+}
+async function login(u, p) {
+  const r = await fetch(API + "/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ username: u, password: p }) });
+  if (!r.ok) throw new Error("Login OpenF1 non riuscito (" + r.status + ")");
+  S.token = (await r.json()).access_token;
+  S.creds = { u, p };
+  return S.token;
+}
+async function renewToken() {
+  if (!S.creds) return;
+  try {
+    await login(S.creds.u, S.creds.p);
+  } catch (e) {
+  }
+}
+function openLoginModal() {
+  $("#modal").style.display = "flex";
+  $("#mErr").textContent = "";
+  const c = pref("creds");
+  if (c) {
+    $("#user").value = c.u || "";
+    $("#pass").value = c.p || "";
+    $("#remember").checked = true;
+  }
+  setTimeout(() => {
+    const f = $("#tok");
+    f.focus();
+    markFocus(f);
+  }, 50);
+}
+async function startLive() {
+  if (window.F1DEMO) {
+    await setMode("live");
+    return;
+  }
+  if (S.mode === "live" && S.session) return;
+  if (!S.token) {
+    const c = pref("creds");
+    if (c) {
+      try {
+        await login(c.u, c.p);
+      } catch (e) {
+        setStatus("Accesso OpenF1 non riuscito: " + e.message, true);
+      }
+    }
+  }
+  if (!S.token) {
+    openLoginModal();
+    return;
+  }
+  await setMode("live");
+}
+$("#mCancel").onclick = () => {
+  $("#modal").style.display = "none";
+};
+$("#mCd").onclick = async () => {
+  S.cdOnly = true;
+  $("#modal").style.display = "none";
+  await setMode("live");
+};
+$("#mGo").onclick = async () => {
+  $("#mErr").textContent = "";
+  try {
+    let tok = $("#tok").value.trim();
+    if (tok) {
+      S.token = tok;
+    } else {
+      const u = $("#user").value.trim(), p = $("#pass").value;
+      if (!u || !p) throw new Error("Inserisci un token oppure username e password");
+      await login(u, p);
+      pref("creds", $("#remember").checked ? { u, p } : null);
+    }
+    $("#pass").value = "";
+    $("#modal").style.display = "none";
+    await setMode("live");
+  } catch (e) {
+    $("#mErr").textContent = e.message;
+  }
+};
+async function liveEntry() {
+  try {
+    setStatus("Cerco la prossima sessione…");
+    const now = Date.now();
+    const ss = (await api("sessions", [["date_end", ">", isoQ(now - 36e5)]])).filter((s) => !s.is_cancelled).sort((a, b) => pd(a.date_start) - pd(b.date_start));
+    if (S.mode !== "live") return;
+    const cur = ss.find((s) => now >= pd(s.date_start) - LIVE_LEAD && now <= pd(s.date_end) + 18e5);
+    if (cur) {
+      await connectLive(cur, ss);
+      return;
+    }
+    setStatus("");
+    showCountdown(ss.find((s) => pd(s.date_start) > now), ss);
+  } catch (e) {
+    setStatus(e.message, true);
+    showCountdown(null, [], e.message);
+  }
+}
+async function connectLive(sess, ss) {
+  hideCd();
+  if (!S.token && !window.F1DEMO) {
+    showCountdown(sess, ss || [], null, true);
+    return;
+  }
+  S.mode = "live";
+  await loadSession(sess);
+}
+function hideCd() {
+  clearInterval(S.cdTimer);
+  const c = $("#cd");
+  if (c) c.classList.remove("on");
+}
+const pad2 = (n) => String(n).padStart(2, "0");
+function fmtCd(ms) {
+  const s = Math.max(0, Math.floor(ms / 1e3)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (d ? d + "g " : "") + pad2(h) + ":" + pad2(m) + ":" + pad2(x);
+}
+function showCountdown(next, ss, err, needLogin) {
+  clearInterval(S.cdTimer);
+  const box = $("#cd");
+  box.classList.add("on");
+  if (!next) {
+    box.innerHTML = `<div class="cdbox"><div class="cdk">NESSUNA SESSIONE IN PROGRAMMA</div><div class="cdnote">${esc(err || "Il calendario della prossima sessione non è ancora disponibile.")}</div><div class="cdact"><button class="btn primary" id="cdLast">Rivedi l'ultima gara</button></div></div>`;
+    $("#cdLast").onclick = () => setPick("race");
+    return;
+  }
+  const wk = (ss || []).filter((s) => next.meeting_key != null ? s.meeting_key === next.meeting_key : true).slice(0, 8);
+  const fmtW = (ms) => new Date(ms).toLocaleString("it-IT", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const now = Date.now();
+  box.innerHTML = `<div class="cdbox">
+    <div class="cdk">${needLogin ? "SESSIONE IN CORSO" : "PROSSIMA SESSIONE"}</div>
+    <div class="cdn">${esc(sessLabel(next))} · ${esc(next.location || next.country_name || "")}</div>
+    <div class="cdt mono" id="cdTime">${needLogin ? "LIVE" : fmtCd(pd(next.date_start) - now)}</div>
+    <div class="cdw">${esc(fmtW(pd(next.date_start)))}</div>
+    <div id="cdList">${wk.map((s) => `<div class="${s.session_key === next.session_key ? "nx" : pd(s.date_end) < now ? "pst" : ""}"><span>${esc(sessLabel(s))}</span><span>${esc(fmtW(pd(s.date_start)))}</span></div>`).join("")}</div>
+    <div class="cdnote">${needLogin ? "Per vedere il live servono le credenziali OpenF1 (abbonamento sponsor)." : window.F1DEMO ? "Demo: in questo esempio le sessioni sono simulate." : "I dati live partono 30 minuti prima della sessione: l'app si collega da sola 15 minuti prima, basta tenerla aperta." + (S.token ? "" : " Per collegarti serviranno le credenziali OpenF1.")}</div>
+    <div class="cdact">${!S.token && !window.F1DEMO ? '<button class="btn primary" id="cdLogin">Accedi a OpenF1</button> ' : ""}${needLogin ? "" : `<button class="btn" id="cdLast2">Rivedi l'ultima gara</button>`}</div>
+  </div>`;
+  const lg = $("#cdLogin");
+  if (lg) lg.onclick = openLoginModal;
+  const l2 = $("#cdLast2");
+  if (l2) l2.onclick = () => setPick("race");
+  if (!needLogin) S.cdTimer = setInterval(() => {
+    const rem = pd(next.date_start) - Date.now(), el = $("#cdTime");
+    if (!el) return clearInterval(S.cdTimer);
+    if (rem <= LIVE_LEAD) {
+      clearInterval(S.cdTimer);
+      if (S.mode === "live") connectLive(next, ss);
+      return;
+    }
+    el.textContent = fmtCd(rem);
+  }, 1e3);
+  const fb = $("#cd button");
+  if (fb && document.body.classList.contains("tv")) {
+    fb.focus();
+    markFocus(fb);
+  }
+}
+let pollN = 0;
+async function livePoll() {
+  if (S.mode !== "live" || !S.session) return;
+  try {
+    const rows = await api("location", [["session_key", "=", S.session.session_key], ["date", ">", isoQ(S.locLast)]]);
+    ingestLoc(rows);
+    const cut = Date.now() - 6e5;
+    for (const a of Object.values(S.loc)) {
+      let k = 0;
+      while (k < a.length && a[k].t < cut) k++;
+      if (k) a.splice(0, k);
+    }
+    if (++pollN % 4 === 0) {
+      const since = Math.max(...Object.values(S.posEv).flat().map((p) => p.t), 0);
+      await fetchCore(false, since || void 0);
+    }
+    if (pollN % 600 === 0) await renewToken();
+    setStatus("Live · " + new Date(S.locLast).toLocaleTimeString("it-IT"));
+  } catch (e) {
+    setStatus(e.message, true);
+    if (/scaduto|non valido/.test(e.message)) await renewToken();
+  }
+  S.liveTimer = setTimeout(livePoll, 3e3);
+}
+let lastFrame = performance.now();
+function frame(now) {
+  const dt = now - lastFrame;
+  lastFrame = now;
+  if (S.session && S.ready) {
+    if (S.mode === "replay") {
+      const r = covered(S.t), ready = r && r.state === "ok";
+      $("#buffering").style.display = !ready && S.track ? "block" : "none";
+      if (S.playing && ready) {
+        S.t = Math.min(S.tEnd, S.t + dt * S.speed);
+        if (S.kind === "quali") qSkipBreak();
+        if (S.t >= S.tEnd) {
+          S.playing = false;
+          updatePlayBtn();
+        }
+      }
+      ensureLoc(S.t);
+    } else {
+      S.t = Date.now() - S.delay * 1e3;
+      $("#buffering").style.display = "none";
+    }
+    drawMap();
+    if (now - S.lastUi > 250) {
+      updateBoard();
+      updateControls();
+      S.lastUi = now;
+    }
+    if (now - S.lastAna > 1e3) {
+      updateAnalytics();
+      S.lastAna = now;
+    }
+  } else if (!S.session) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, cv.width / DPR, cv.height / DPR);
+  }
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+function pref(k, v) {
+  try {
+    if (arguments.length === 1) {
+      const x = localStorage.getItem("f1rv." + k);
+      return x == null ? null : JSON.parse(x);
+    }
+    if (v == null) localStorage.removeItem("f1rv." + k);
+    else localStorage.setItem("f1rv." + k, JSON.stringify(v));
+  } catch (e) {
+    return null;
+  }
+}
+let focusEl = null;
+function markFocus(el) {
+  if (focusEl) focusEl.classList.remove("focus");
+  focusEl = el;
+  if (el && document.body.classList.contains("tv")) el.classList.add("focus");
+}
+document.addEventListener("focusin", (e) => markFocus(e.target));
+function focusKey(el) {
+  if (!el || el === document.body) return null;
+  for (const a of ["n", "pace"]) if (el.dataset && el.dataset[a] != null) return `[data-${a}="${el.dataset[a]}"]`;
+  return null;
+}
+function keepFocus(fn) {
+  const key = focusKey(document.activeElement);
+  fn();
+  const ae = document.activeElement;
+  if (key && (!ae || ae === document.body || !ae.isConnected)) {
+    const el = document.querySelector(key);
+    if (el) {
+      el.focus({ preventScroll: true });
+      markFocus(el);
+    }
+  }
+}
+const TV_UA = /SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|AFT[A-Z]|BRAVIA|Android TV|GoogleTV|CrKey|HbbTV|VIDAA|Viera|Roku/i;
+function setTv(on) {
+  document.body.classList.toggle("tv", on);
+  $("#tvBtn").classList.toggle("on", on);
+  pref("tv", on);
+  if (on) {
+    const f = S.session ? $("#playBtn") : $("#loadBtn");
+    f.focus();
+    markFocus(f);
+  } else if (focusEl) focusEl.classList.remove("focus");
+  S.anaSig = "";
+  setTimeout(resize, 50);
+}
+$("#tvBtn").onclick = () => setTv(!document.body.classList.contains("tv"));
+function visible(el) {
+  if (el.disabled || el.offsetParent === null) return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+}
+function spatialMove(dir) {
+  var _a;
+  const scope = $("#modal").style.display === "flex" ? $("#modal") : document;
+  const all = [...scope.querySelectorAll("button, select, input, .row[data-n], [data-pace]")].filter(visible);
+  const cur = document.activeElement;
+  if (!cur || cur === document.body || !all.includes(cur)) {
+    const f = all[0];
+    if (f) {
+      f.focus();
+      markFocus(f);
+    }
+    return;
+  }
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bs_ = 1e12;
+  for (const el of all) {
+    if (el === cur) continue;
+    const b = el.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    let main, side;
+    if (dir === "right") {
+      if (b.left < a.right - 4) continue;
+      main = b.left - a.right;
+      side = Math.abs(by - ay);
+    } else if (dir === "left") {
+      if (b.right > a.left + 4) continue;
+      main = a.left - b.right;
+      side = Math.abs(by - ay);
+    } else if (dir === "down") {
+      if (b.top < a.bottom - 4) continue;
+      main = b.top - a.bottom;
+      side = Math.abs(bx - ax);
+    } else {
+      if (b.bottom > a.top + 4) continue;
+      main = a.top - b.bottom;
+      side = Math.abs(bx - ax);
+    }
+    const sc = Math.max(0, main) + side * 2.5;
+    if (sc < bs_) {
+      bs_ = sc;
+      best = el;
+    }
+  }
+  if (best) {
+    best.focus({ preventScroll: true });
+    (_a = best.scrollIntoView) == null ? void 0 : _a.call(best, { block: "nearest", inline: "nearest" });
+    markFocus(best);
+  }
+}
+const KEY = {
+  play: ["MediaPlayPause", "MediaPlay", "MediaPause", "Play", "Pause", "PlayPause"],
+  ff: ["MediaFastForward", "FastFwd", "MediaTrackNext"],
+  rw: ["MediaRewind", "Rewind", "MediaTrackPrevious"],
+  back: ["Escape", "GoBack", "BrowserBack", "Backspace"]
+};
+const CODE = { 10252: "play", 415: "play", 19: "play", 417: "ff", 412: "rw", 10009: "back", 461: "back" };
+function remoteAction(e) {
+  for (const [k, arr] of Object.entries(KEY)) if (arr.includes(e.key)) return k;
+  return CODE[e.keyCode] || null;
+}
+function handleRemote(e) {
+  const act = remoteAction(e);
+  if (act === "play") {
+    e.preventDefault();
+    $("#playBtn").click();
+    return true;
+  }
+  if (act === "ff") {
+    e.preventDefault();
+    skip(30);
+    return true;
+  }
+  if (act === "rw") {
+    e.preventDefault();
+    skip(-30);
+    return true;
+  }
+  if (!document.body.classList.contains("tv")) return false;
+  const ae = document.activeElement, typing = ae && ae.matches("input[type=text],input[type=password],input[type=number]");
+  if (act === "back" && !typing) {
+    if ($("#modal").style.display === "flex") {
+      e.preventDefault();
+      $("#mCancel").click();
+      return true;
+    }
+    if (S.selected != null) {
+      e.preventDefault();
+      selectDriver(S.selected);
+      return true;
+    }
+    return false;
+  }
+  const dirs = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+  const d = dirs[e.key] || { 37: "left", 39: "right", 38: "up", 40: "down" }[e.keyCode];
+  if (d) {
+    if (ae && ae.id === "scrub" && (d === "left" || d === "right")) {
+      e.preventDefault();
+      skip(d === "left" ? -30 : 30);
+      return true;
+    }
+    if (ae && ae.id === "delay" && (d === "left" || d === "right")) {
+      e.preventDefault();
+      document.querySelector(`[data-dl="${d === "left" ? -1 : 1}"]`).click();
+      return true;
+    }
+    if (typing && (d === "left" || d === "right")) return true;
+    e.preventDefault();
+    spatialMove(d);
+    return true;
+  }
+  if ((e.key === "Enter" || e.keyCode === 13) && ae && ae.matches(".row[data-n], [data-pace]")) {
+    e.preventDefault();
+    ae.click();
+    return true;
+  }
+  return true;
+}
+(function boot() {
+  var _a;
+  const d = pref("delay");
+  if (d != null) {
+    S.delay = d;
+    $("#delay").value = d;
+    $("#delayVal").textContent = d + " s";
+  }
+  const pk = pref("pick");
+  if (pk === "quali" || pk === "race") {
+    S.pick = pk;
+    S.kind = pk === "quali" ? "quali" : "race";
+    S.phased = pk === "quali";
+    applyKindUI();
+  }
+  segUI();
+  const q = new URLSearchParams(location.search);
+  const tv = q.has("tv") ? q.get("tv") !== "0" : (_a = pref("tv")) != null ? _a : TV_UA.test(navigator.userAgent);
+  if (tv) setTv(true);
+})();
+$("#race").addEventListener("change", (e) => pref("race", e.target.value));
+$("#year").addEventListener("change", (e) => pref("year", e.target.value));
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {
+});
+initYears();
+if (!window.F1DEMO && pref("mode") === "live" && pref("creds")) startLive();
+</script>
+</body>
+</html>
